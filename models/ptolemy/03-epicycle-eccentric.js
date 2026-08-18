@@ -17,8 +17,8 @@ export const model = {
   name: '周転円＋離心円',
   shortName: '離心円',
   sourceFile: 'models/ptolemy/03-epicycle-eccentric.js',
-  description: '周転円モデルに離心円を追加し、従円の中心を地球からずらします。Carlsbergの実観測火星位置に各パラメータを合わせています。',
-  elements: ['周転円', '離心円', '一様円運動', 'Carlsberg実観測で評価'],
+  description: '周転円モデルに離心円を追加し、従円の中心を地球からずらします。Tokyo PMC88の実観測火星位置に各パラメータを合わせています。',
+  elements: ['周転円', '離心円', '一様円運動', 'Tokyo PMC88実観測で評価'],
   fittedStats: { maeDeg: stats.mae_deg, rmsDeg: stats.rms_deg, maxAbsDeg: stats.max_abs_deg },
 };
 
