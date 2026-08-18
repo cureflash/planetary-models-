@@ -17,8 +17,8 @@ export const model = {
   name: '周転円＋離心円＋エカント',
   shortName: 'エカント',
   sourceFile: 'models/ptolemy/04-equant.js',
-  description: '周転円と離心円にエカントを追加します。Carlsbergの実観測火星位置に各パラメータを合わせています。',
-  elements: ['周転円', '離心円', 'エカント', 'Carlsberg実観測で評価'],
+  description: '周転円と離心円にエカントを追加します。Tokyo PMC88の実観測火星位置に各パラメータを合わせています。',
+  elements: ['周転円', '離心円', 'エカント', 'Tokyo PMC88実観測で評価'],
   fittedStats: { maeDeg: stats.mae_deg, rmsDeg: stats.rms_deg, maxAbsDeg: stats.max_abs_deg },
 };
 
