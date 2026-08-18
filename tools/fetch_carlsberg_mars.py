@@ -8,12 +8,12 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-OUT = ROOT / "data" / "mars_observations_carlsberg.csv"
+OUT = ROOT / "data" / "mars_observations_carlsberg.csv"  # temporary compatibility path
 MIN_BASELINE_DAYS = 730.0
-MARS_COMPOSITE_CMC_CODE = "9000040"
 RAW_URLS = [
-    "https://vizier.cfa.harvard.edu/ftp/cats/I/256/planet.dat.gz",
-    "https://cdsarc.cds.unistra.fr/ftp/cats/I/256/planet.dat.gz",
+    "https://vizier.cfa.harvard.edu/ftp/cats/I/188/planets.gz",
+    "https://cdsarc.cds.unistra.fr/ftp/cats/I/188/planets.gz",
+    "https://vizier.cfa.harvard.edu/ftp/cats/I/188/planets",
 ]
 
 
@@ -23,34 +23,40 @@ def fetch_url(url: str, timeout: int = 90) -> bytes:
         return response.read()
 
 
-def download_planet_table() -> str:
+def download_planets() -> str:
     last_error: Exception | None = None
     for url in RAW_URLS:
         try:
-            text = gzip.decompress(fetch_url(url)).decode("ascii", errors="replace")
+            payload = fetch_url(url)
+            if url.endswith(".gz"):
+                payload = gzip.decompress(payload)
+            text = payload.decode("ascii", errors="replace")
             rows = text.splitlines()
-            if len(rows) < 25000:
-                raise RuntimeError(f"unexpectedly short planet.dat: {len(rows)} rows")
-            print(f"downloaded I/256 planet.dat from {url}: {len(rows)} rows")
+            if len(rows) < 600:
+                raise RuntimeError(f"unexpectedly short planets table: {len(rows)} rows")
+            print(f"downloaded Tokyo PMC88 planets from {url}: {len(rows)} rows")
             return text
         except Exception as exc:
             print(f"failed {url}: {exc}")
             last_error = exc
-    raise RuntimeError(f"all I/256 planet.dat mirrors failed: {last_error}")
+    raise RuntimeError(f"all Tokyo PMC88 mirrors failed: {last_error}")
 
 
 def parse_planet_line(line: str) -> dict[str, str | float] | None:
-    if len(line) < 76:
+    # CDS I/188 / planets, 1-based byte positions from the catalogue ReadMe.
+    if len(line) < 90:
         return None
     try:
-        cmc = line[1:8].strip()
-        mp = line[12:16].strip()
-        name = line[18:30].strip()
-        tt = float(line[32:46])
-        flag = line[46:47].strip()
-        rah = int(line[50:52]); ram = int(line[53:55]); ras = float(line[56:62])
-        sign = -1.0 if line[64:65] == "-" else 1.0
-        ded = int(line[65:67]); dem = int(line[68:70]); des = float(line[71:76])
+        name = line[0:12].strip()
+        seq = line[12:16].strip()
+        jd = float(line[18:32])
+        rah = int(line[48:50])
+        ram = int(line[51:53])
+        ras = float(line[54:60])
+        sign = -1.0 if line[78:79] == "-" else 1.0
+        ded = int(line[79:81])
+        dem = int(line[82:84])
+        des = float(line[85:90])
     except ValueError:
         return None
     if not (0 <= rah <= 23 and 0 <= ram <= 59 and 0 <= ras < 60):
@@ -58,7 +64,9 @@ def parse_planet_line(line: str) -> dict[str, str | float] | None:
     if not (0 <= ded <= 90 and 0 <= dem <= 59 and 0 <= des < 60):
         return None
     return {
-        "cmc": cmc, "mp": mp, "name": name, "tt": tt, "flag": flag,
+        "name": name,
+        "seq": seq,
+        "jd": jd,
         "ra_deg": 15.0 * (rah + ram / 60.0 + ras / 3600.0),
         "dec_deg": sign * (ded + dem / 60.0 + des / 3600.0),
     }
@@ -70,9 +78,12 @@ def mean_obliquity_deg(jd: float) -> float:
 
 
 def equatorial_to_ecliptic_lon_deg(ra_deg: float, dec_deg: float, jd: float) -> float:
-    ra = math.radians(ra_deg); dec = math.radians(dec_deg); eps = math.radians(mean_obliquity_deg(jd))
+    ra = math.radians(ra_deg)
+    dec = math.radians(dec_deg)
+    eps = math.radians(mean_obliquity_deg(jd))
     x = math.cos(dec) * math.cos(ra)
-    y_eq = math.cos(dec) * math.sin(ra); z_eq = math.sin(dec)
+    y_eq = math.cos(dec) * math.sin(ra)
+    z_eq = math.sin(dec)
     y_ecl = y_eq * math.cos(eps) + z_eq * math.sin(eps)
     return math.degrees(math.atan2(y_ecl, x)) % 360.0
 
@@ -82,45 +93,47 @@ def jd_to_iso(jd: float) -> tuple[str, str]:
     return dt.strftime("%Y-%m-%d"), dt.strftime("%Y-%m-%dT%H:%M:%S")
 
 
-def is_mars(row: dict[str, str | float]) -> bool:
-    return str(row["name"]).strip().casefold() == "mars" or str(row["cmc"]).strip() == MARS_COMPOSITE_CMC_CODE
-
-
 def main() -> None:
-    parsed = [p for line in download_planet_table().splitlines() if (p := parse_planet_line(line)) is not None]
-    bright = [p for p in parsed if str(p["cmc"]).startswith("90000")]
-    print("bright-object identifiers:", sorted({(str(p["cmc"]), str(p["mp"]), str(p["name"])) for p in bright}))
-    mars = [p for p in parsed if is_mars(p)]
+    parsed = [p for line in download_planets().splitlines() if (p := parse_planet_line(line)) is not None]
+    names = sorted({str(row["name"]) for row in parsed})
+    print("planet names:", names)
+    mars = [row for row in parsed if str(row["name"]).strip().casefold() == "mars"]
     if not mars:
-        raise RuntimeError("no Mars observations found; see bright-object identifiers above")
+        raise RuntimeError("Tokyo PMC88 contains no Mars rows")
 
-    mars.sort(key=lambda row: float(row["tt"]))
-    print(f"raw Mars rows: {len(mars)}")
-    print("Mars identifiers:", sorted({(str(row["cmc"]), str(row["mp"]), str(row["name"])) for row in mars}))
-
+    mars.sort(key=lambda row: float(row["jd"]))
     output: list[dict[str, str]] = []
     for row in mars:
-        jd = float(row["tt"]); ra_deg = float(row["ra_deg"]); dec_deg = float(row["dec_deg"])
+        jd = float(row["jd"])
+        ra_deg = float(row["ra_deg"])
+        dec_deg = float(row["dec_deg"])
         date, timestamp = jd_to_iso(jd)
         output.append({
-            "date": date, "timestamp_tdt": timestamp, "tdt_jd": f"{jd:.6f}",
-            "ra_deg": f"{ra_deg:.10f}", "dec_deg": f"{dec_deg:.10f}",
+            "date": date,
+            "timestamp_tdt": timestamp,
+            "tdt_jd": f"{jd:.6f}",
+            "ra_deg": f"{ra_deg:.10f}",
+            "dec_deg": f"{dec_deg:.10f}",
             "ecliptic_lon_deg": f"{equatorial_to_ecliptic_lon_deg(ra_deg, dec_deg, jd):.10f}",
-            "quality_flag": str(row["flag"]), "cmc_object_code": str(row["cmc"]),
-            "source_volume": "CMC1-11", "source_catalog": "I/256 planet.dat",
+            "quality_flag": "",
+            "cmc_object_code": str(row["seq"]),
+            "source_volume": "Tokyo PMC88 Part III",
+            "source_catalog": "CDS I/188 planets",
         })
 
     output = sorted({row["tdt_jd"]: row for row in output}.values(), key=lambda row: float(row["tdt_jd"]))
     baseline = float(output[-1]["tdt_jd"]) - float(output[0]["tdt_jd"])
+    print(f"Mars rows: {len(output)}")
+    print(f"range: {output[0]['timestamp_tdt']} .. {output[-1]['timestamp_tdt']} ({baseline:.1f} days / {baseline / 365.25:.2f} years)")
     if baseline < MIN_BASELINE_DAYS:
-        raise RuntimeError(f"Carlsberg Mars baseline is only {baseline:.1f} days; at least {MIN_BASELINE_DAYS:.0f} required")
+        raise RuntimeError(f"Tokyo PMC88 Mars baseline is only {baseline:.1f} days; at least {MIN_BASELINE_DAYS:.0f} required")
 
     OUT.parent.mkdir(parents=True, exist_ok=True)
     with OUT.open("w", newline="", encoding="utf-8") as handle:
-        writer = csv.DictWriter(handle, fieldnames=list(output[0].keys())); writer.writeheader(); writer.writerows(output)
-    good = sum(1 for row in output if row["quality_flag"] != "*")
-    print(f"wrote {len(output)} Mars observations ({good} unflagged) to {OUT}")
-    print(f"range: {output[0]['timestamp_tdt']} .. {output[-1]['timestamp_tdt']} ({baseline:.1f} days / {baseline / 365.25:.2f} years)")
+        writer = csv.DictWriter(handle, fieldnames=list(output[0].keys()))
+        writer.writeheader()
+        writer.writerows(output)
+    print(f"wrote {len(output)} Tokyo PMC88 Mars observations to {OUT}")
 
 
 if __name__ == "__main__":
