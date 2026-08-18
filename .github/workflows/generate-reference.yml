@@ -7,6 +7,7 @@ on:
       - "tools/fetch_tokyo_pmc88_mars.py"
       - "tools/fit_ptolemy_models.py"
       - "js/app-v4.js"
+      - "js/observation-frames.js"
       - "models/ptolemy/**"
       - "index.html"
       - ".github/workflows/generate-reference.yml"
@@ -16,6 +17,7 @@ on:
       - "tools/fetch_tokyo_pmc88_mars.py"
       - "tools/fit_ptolemy_models.py"
       - "js/app-v4.js"
+      - "js/observation-frames.js"
       - "models/ptolemy/**"
       - "index.html"
       - ".github/workflows/generate-reference.yml"
@@ -48,6 +50,7 @@ jobs:
       - name: Check browser JavaScript syntax
         run: |
           node --check js/app-v4.js
+          node --check js/observation-frames.js
           node --check models/ptolemy/01-simple-circle.js
           node --check models/ptolemy/02-epicycle.js
           node --check models/ptolemy/03-epicycle-eccentric.js
