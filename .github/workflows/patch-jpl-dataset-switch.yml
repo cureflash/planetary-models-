@@ -1,0 +1,46 @@
+name: Enable JPL dataset switch
+
+on:
+  push:
+    branches: [add-jpl-dataset-switch]
+    paths:
+      - "tools/patch_jpl_dataset_switch.py"
+      - ".github/workflows/patch-jpl-dataset-switch.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: add-jpl-dataset-switch
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - name: Apply data source switch
+        run: python tools/patch_jpl_dataset_switch.py
+      - name: Check JavaScript syntax
+        run: |
+          node --check js/data-bootstrap.js
+          node --check js/app-v3.js
+          node --check models/ptolemy/fitted-parameters.js
+      - name: Verify restored JPL dataset
+        run: |
+          test -f data/mars_reference_2020_2030.csv
+          head -n 1 data/mars_reference_2020_2030.csv | grep -q 'earth_x_au'
+          test "$(wc -l < data/mars_reference_2020_2030.csv)" -gt 3600
+      - name: Commit generated frontend changes
+        run: |
+          if [ -z "$(git status --porcelain -- index.html js/app-v3.js js/data-bootstrap.js)" ]; then
+            echo "Already patched."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html js/app-v3.js js/data-bootstrap.js
+          git commit -m "Add W2J00 and JPL data source selector"
+          git push
