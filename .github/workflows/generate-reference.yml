@@ -63,12 +63,13 @@ jobs:
           name: tokyo-pmc88-mars-generated
           path: |
             data/mars_observations_tokyo_pmc88.csv
+            data/mars_observations_carlsberg.csv
             data/ptolemy_mars_fitted_parameters.json
             models/ptolemy/fitted-parameters.js
 
       - name: Commit generated observation data and fits
         run: |
-          FILES="data/mars_observations_tokyo_pmc88.csv data/ptolemy_mars_fitted_parameters.json models/ptolemy/fitted-parameters.js"
+          FILES="data/mars_observations_tokyo_pmc88.csv data/mars_observations_carlsberg.csv data/ptolemy_mars_fitted_parameters.json models/ptolemy/fitted-parameters.js"
           if [ -z "$(git status --porcelain -- $FILES)" ]; then
             echo "Tokyo PMC88 data and fitted parameters already up to date."
             exit 0
