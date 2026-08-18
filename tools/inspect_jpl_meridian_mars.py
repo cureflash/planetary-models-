@@ -16,7 +16,8 @@ UA = "planetary-models-educational-site/1.0"
 # JPL transit records used on the planetary observational-data page.
 # Example: P0042446437036090 ... 1447110980 -150425930 ...
 # P004 = Mars. The epoch is JD as 7 integer + 6 fractional digits.
-PAT = re.compile(r"^P004(\d{7})(\d{6})\s+(\d+)\s+([0-9]{10})\s+([+-][0-9]{9})")
+# Leading zero in RA hour and '+' on positive Dec can be omitted by the text format.
+PAT = re.compile(r"^P004(\d{7})(\d{6})\s+(\d+)\s+([0-9]{8,10})\s+([+-]?[0-9]{7,9})")
 
 
 @dataclass(frozen=True)
@@ -34,17 +35,24 @@ def get(url: str) -> str:
 
 
 def parse_ra(token: str) -> float:
+    token = token.strip().zfill(10)
     h = int(token[0:2])
     m = int(token[2:4])
     sec = int(token[4:]) / 10000.0
+    if not (0 <= h <= 23 and 0 <= m <= 59 and 0 <= sec < 60):
+        raise ValueError(token)
     return 15.0 * (h + m / 60.0 + sec / 3600.0)
 
 
 def parse_dec(token: str) -> float:
-    sign = -1.0 if token[0] == "-" else 1.0
-    d = int(token[1:3])
-    m = int(token[3:5])
-    sec = int(token[5:]) / 1000.0
+    raw = token.strip()
+    sign = -1.0 if raw.startswith("-") else 1.0
+    digits = raw.lstrip("+-").zfill(9)
+    d = int(digits[0:2])
+    m = int(digits[2:4])
+    sec = int(digits[4:]) / 1000.0
+    if not (0 <= d <= 90 and 0 <= m <= 59 and 0 <= sec < 60):
+        raise ValueError(token)
     return sign * (d + m / 60.0 + sec / 3600.0)
 
 
@@ -67,8 +75,6 @@ def parse(text: str, source: str) -> tuple[list[Row], int]:
             ra = parse_ra(m.group(4))
             dec = parse_dec(m.group(5))
         except Exception:
-            continue
-        if not (0 <= ra < 360 and -90 <= dec <= 90):
             continue
         rows.append(Row(jd, ra, dec, source))
     return rows, p004
@@ -99,19 +105,27 @@ def main() -> None:
             continue
         rows, p004 = parse(text, label)
         print(f"\n{label}: file lines={len(text.splitlines())}, P004 raw={p004}, parsed={len(rows)}")
-        if p004 and not rows:
-            for line in [x for x in text.splitlines() if x.startswith('P004')][:5]:
-                print("UNPARSED SAMPLE", repr(line))
+        if p004 == 0:
+            print("FIRST DATA-LIKE LINES:")
+            shown = 0
+            for line in text.splitlines():
+                if line and not line.startswith('#'):
+                    print(repr(line))
+                    shown += 1
+                    if shown >= 8:
+                        break
+        elif len(rows) != p004:
+            bad = [x for x in text.splitlines() if x.startswith('P004') and not PAT.match(x)]
+            for line in bad[:8]:
+                print("UNMATCHED P004", repr(line))
         summary(label, rows)
         all_rows.extend(rows)
 
-    # Exact duplicate JD/position records from overlapping source reductions do not add information.
     unique = {(round(r.jd, 6), round(r.ra_deg, 8), round(r.dec_deg, 8), r.source): r for r in all_rows}
     merged = sorted(unique.values(), key=lambda r: r.jd)
     print("\nMERGED")
     summary("JPL meridian Mars merged", merged)
 
-    # Time-bin count helps judge how continuous the real observations are without interpolation.
     if merged:
         start = merged[0].jd
         end = merged[-1].jd
