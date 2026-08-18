@@ -1,21 +1,21 @@
 {
   "source": {
-    "catalog": "Carlsberg Meridian Catalog individual planet-observation tables",
-    "volumes": [
-      "Tokyo PMC88 Part III"
-    ],
-    "target": "Mars (CMC code 99040)",
+    "catalog": "Tokyo Photoelectric Meridian Circle Catalog 1988",
+    "catalog_id": "CDS I/188",
+    "table": "planets",
+    "target": "Mars",
     "observations_total": 79,
     "observations_used": 79,
-    "filter": "exclude quality_flag='*' (high internal mean error)",
-    "coordinate": "apparent geocentric RA/Dec of date, converted to ecliptic longitude for model comparison"
+    "coordinate": "observed geocentric apparent RA/Dec of date, converted to ecliptic longitude for model comparison",
+    "time_scale": "UT1"
   },
   "constants": {
     "mars_period_days": 686.97959,
     "earth_period_days": 365.256363004,
     "epoch_jd": 2446455.41512,
     "epoch_date": "1986-01-24",
-    "last_date": "1988-12-30"
+    "last_date": "1988-12-30",
+    "baseline_days": 1070.4713360001333
   },
   "models": {
     "simple_circle": {
