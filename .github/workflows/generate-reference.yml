@@ -1,10 +1,11 @@
-name: Generate Mars reference data
+name: Generate Carlsberg Mars observations
 
 on:
   push:
     branches: [main]
     paths:
-      - "tools/generate_reference.py"
+      - "tools/fetch_carlsberg_mars.py"
+      - "tools/fit_ptolemy_models.py"
       - ".github/workflows/generate-reference.yml"
   workflow_dispatch:
 
@@ -16,19 +17,29 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.x"
-      - name: Generate daily Mars reference CSV
-        run: python tools/generate_reference.py
-      - name: Commit generated CSV
+
+      - name: Install fitting dependencies
+        run: python -m pip install --disable-pip-version-check numpy scipy
+
+      - name: Download Carlsberg Mars observations from VizieR
+        run: python tools/fetch_carlsberg_mars.py
+
+      - name: Fit Ptolemy stages to the observations
+        run: python tools/fit_ptolemy_models.py
+
+      - name: Commit generated observation data and fits
         run: |
-          if [ -z "$(git status --porcelain -- data/mars_reference_2020_2030.csv)" ]; then
-            echo "Reference data already up to date."
+          FILES="data/mars_observations_carlsberg_1984_1998.csv data/ptolemy_mars_fitted_parameters.json models/ptolemy/fitted-parameters.js"
+          if [ -z "$(git status --porcelain -- $FILES)" ]; then
+            echo "Carlsberg data and fitted parameters already up to date."
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/mars_reference_2020_2030.csv
-          git commit -m "Generate Mars reference data"
+          git add $FILES
+          git commit -m "Update Carlsberg Mars observations and fits"
           git push
