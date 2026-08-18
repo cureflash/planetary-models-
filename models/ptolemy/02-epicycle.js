@@ -16,8 +16,8 @@ export const model = {
   name: '周転円',
   shortName: '周転円',
   sourceFile: 'models/ptolemy/02-epicycle.js',
-  description: '地球中心の従円に周転円だけを追加します。逆行を再現し、Tokyo PMC88の実観測火星位置に位相と周転円半径を合わせています。',
-  elements: ['地球中心', '従円', '周転円', '一様円運動', 'Tokyo PMC88実観測で評価'],
+  description: '地球中心の従円に周転円だけを追加します。逆行を再現し、USNO W2J00の火星実観測に位相と周転円半径を合わせています。',
+  elements: ['地球中心', '従円', '周転円', '一様円運動', 'USNO W2J00実観測で評価'],
   fittedStats: { maeDeg: stats.mae_deg, rmsDeg: stats.rms_deg, maxAbsDeg: stats.max_abs_deg },
 };
 
