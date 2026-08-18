@@ -14,8 +14,8 @@ export const model = {
   name: '単純な円運動',
   shortName: '単純円',
   sourceFile: 'models/ptolemy/01-simple-circle.js',
-  description: '地球を中心に、火星が一定角速度で円運動すると仮定します。離心円・周転円・エカントは使いません。Carlsbergの実観測火星位置に位相を合わせています。',
-  elements: ['地球中心', '一様円運動', 'Carlsberg実観測で評価'],
+  description: '地球を中心に、火星が一定角速度で円運動すると仮定します。離心円・周転円・エカントは使いません。Tokyo PMC88の実観測火星位置に位相を合わせています。',
+  elements: ['地球中心', '一様円運動', 'Tokyo PMC88実観測で評価'],
   fittedStats: { maeDeg: stats.mae_deg, rmsDeg: stats.rms_deg, maxAbsDeg: stats.max_abs_deg },
 };
 

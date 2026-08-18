@@ -1,5 +1,5 @@
 const THEORIES = [
-  { id: 'observation', label: 'Carlsberg実観測', files: [] },
+  { id: 'observation', label: 'Tokyo PMC88実観測', files: [] },
   {
     id: 'ptolemy', label: 'プトレマイオス',
     files: [
@@ -19,11 +19,11 @@ const OBSERVATION_MODEL = {
   model: {
     id: 'observation',
     stage: 0,
-    name: '地球固定・Carlsberg火星実観測',
+    name: '地球固定・Tokyo PMC88火星実観測',
     shortName: '実観測',
-    sourceFile: 'data/mars_observations_carlsberg.csv',
-    description: 'Carlsberg Meridian Catalogの子午環による火星実観測です。地球を中央に固定し、観測された見かけ方向だけを一定半径上に表示します。距離は仮定しません。',
-    elements: ['地球固定', '火星のみ', '実観測RA/Dec', '見かけ方向'],
+    sourceFile: 'data/mars_observations_tokyo_pmc88.csv',
+    description: 'Tokyo Photoelectric Meridian Circle Catalog 1988の火星実観測です。地球を中央に固定し、観測された見かけ方向だけを一定半径上に表示します。距離は仮定しません。',
+    elements: ['地球固定', '火星のみ', '実観測RA/Dec', '見かけ方向', '1986–1988'],
   },
 };
 
@@ -75,13 +75,12 @@ function parseCSV(text) {
     headers.forEach((h, i) => obj[h] = cells[i] ?? '');
     return {
       date: obj.date,
-      timestamp: obj.timestamp_tdt,
-      jd: Number(obj.tdt_jd),
+      timestamp: obj.timestamp_ut1,
+      jd: Number(obj.jd_ut1),
       raDeg: Number(obj.ra_deg),
       decDeg: Number(obj.dec_deg),
       longitudeDeg: Number(obj.ecliptic_lon_deg),
-      qualityFlag: obj.quality_flag || '',
-      sourceVolume: obj.source_volume || '',
+      observationSeq: obj.observation_seq || '',
       sourceCatalog: obj.source_catalog || '',
     };
   }).filter(row => Number.isFinite(row.jd) && Number.isFinite(row.longitudeDeg));
@@ -162,7 +161,7 @@ async function switchModel(newIndex) {
     const files = filesForTheory(theory);
     stageIndex = (newIndex + files.length) % files.length;
     const file = files[stageIndex];
-    currentModule = await import(`${file}?theory=${theory.id}&mode=${ptolemyMode}&stage=${stageIndex}&v=carlsberg`);
+    currentModule = await import(`${file}?theory=${theory.id}&mode=${ptolemyMode}&stage=${stageIndex}&v=tokyo-pmc88`);
     currentPredictions = observations.map(row => currentModule.predict(row.jd));
     els.prev.disabled = files.length <= 1;
     els.next.disabled = files.length <= 1;
@@ -178,7 +177,7 @@ function renderModelHeader() {
   const files = filesForTheory(theory);
   const m = currentModule.model;
   if (theory.id === 'observation') {
-    els.stage.textContent = 'CARLSBERG / OBSERVED';
+    els.stage.textContent = 'TOKYO PMC88 / OBSERVED';
   } else if (theory.id === 'ptolemy' && ptolemyMode === 'almagest') {
     els.stage.textContent = 'ALMAGEST / HISTORICAL PARAMETERS';
   } else if (files.length > 1) {
@@ -199,20 +198,20 @@ function updateViewLabels() {
   if (isObservationMode()) {
     els.orbitKicker.textContent = 'ACTUAL ASTROMETRY';
     els.orbitTitle.textContent = '地球を固定した火星の実観測方向';
-    els.orbitNote.textContent = '地球は中央に固定しています。緑の破線はCarlsbergで実際に測られた火星の見かけ方向を、観測順に結んだものです。距離は測定値ではないため一定半径で表示します。スライダー先頭では軌跡はありません。';
+    els.orbitNote.textContent = '地球は中央に固定しています。緑の破線はTokyo PMC88で1986〜1988年に実際に測られた火星の見かけ方向を、観測順に結んだものです。距離は測定値ではないため一定半径で表示します。';
     els.chartKicker.textContent = `${first} – ${last}`;
-    els.chartTitle.textContent = 'Carlsberg火星実観測：地心黄経';
+    els.chartTitle.textContent = 'Tokyo PMC88火星実観測：地心黄経';
     els.predictedTerm.textContent = '観測地心黄経';
     els.referenceTerm.textContent = '赤経 / 赤緯';
     els.errorTerm.textContent = '観測資料';
   } else {
-    els.orbitKicker.textContent = 'MODEL + CARLSBERG';
-    els.orbitTitle.textContent = 'モデルとCarlsberg実観測';
-    els.orbitNote.textContent = '赤い実線がモデルがスライダー位置までに辿った軌跡、緑の破線がCarlsberg実観測です。観測データは方向だけなので、プトレマイオスでは各時刻のモデル火星と同じ半径上へ観測方向を投影して比較します。';
+    els.orbitKicker.textContent = 'MODEL + TOKYO PMC88';
+    els.orbitTitle.textContent = 'モデルとTokyo PMC88実観測';
+    els.orbitNote.textContent = '赤い実線がモデルがスライダー位置までに辿った軌跡、緑の破線がTokyo PMC88実観測です。観測データは方向だけなので、プトレマイオスでは各時刻のモデル火星と同じ半径上へ観測方向を投影して比較します。';
     els.chartKicker.textContent = `${first} – ${last}`;
-    els.chartTitle.textContent = '火星の地心黄経：モデル vs Carlsberg実観測';
+    els.chartTitle.textContent = '火星の地心黄経：モデル vs Tokyo PMC88実観測';
     els.predictedTerm.textContent = 'モデル予測';
-    els.referenceTerm.textContent = 'Carlsberg実観測';
+    els.referenceTerm.textContent = 'Tokyo PMC88実観測';
     els.errorTerm.textContent = '角度誤差';
   }
 }
@@ -237,11 +236,11 @@ function renderSelectedObservation() {
   const ref = observations[selectedIndex];
   const pred = currentPredictions[selectedIndex];
   if (!ref || !pred) return;
-  els.date.textContent = `${ref.date}  ${ref.sourceVolume}`;
+  els.date.textContent = `${ref.date}  Tokyo PMC88`;
   if (isObservationMode()) {
     els.predicted.textContent = `${ref.longitudeDeg.toFixed(3)}°`;
     els.reference.textContent = `${(ref.raDeg / 15).toFixed(3)}h / ${ref.decDeg.toFixed(3)}°`;
-    els.error.textContent = ref.sourceCatalog || 'Carlsberg';
+    els.error.textContent = ref.sourceCatalog || 'Tokyo PMC88';
   } else {
     els.predicted.textContent = `${pred.longitudeDeg.toFixed(3)}°`;
     els.reference.textContent = `${ref.longitudeDeg.toFixed(3)}°`;
@@ -358,7 +357,7 @@ function drawObservationGeometry(ctx, width, height, ref) {
   label(ctx, 'EARTH (FIXED)', earth.x + 10, earth.y - 10);
   dot(ctx, mars.x, mars.y, 8, '#ff704d');
   label(ctx, 'MARS (OBSERVED DIRECTION)', mars.x + 10, mars.y - 10);
-  label(ctx, 'DASHED = CARLSBERG OBSERVATIONS', 12, 20, '#7de2ab');
+  label(ctx, 'DASHED = TOKYO PMC88 OBSERVATIONS', 12, 20, '#7de2ab');
 }
 
 function modelMarsForSystem(prediction) {
@@ -472,10 +471,10 @@ function drawPtolemyGeometry(ctx, width, height, pred, ref) {
   const modelRadius = Math.hypot(pred.mars.x, pred.mars.y);
   const observed = map(polarPoint(ref.longitudeDeg, modelRadius));
   ring(ctx, observed.x, observed.y, 10, '#7de2ab', 2.4);
-  label(ctx, 'CARLSBERG (ANGLE)', observed.x + 12, observed.y + 15, '#7de2ab');
+  label(ctx, 'TOKYO PMC88 (ANGLE)', observed.x + 12, observed.y + 15, '#7de2ab');
 
   if (g.historical) {
-    label(ctx, 'ALMAGEST PARAMETERS — NOT FITTED TO CMC', 12, 20, '#ffd166');
+    label(ctx, 'ALMAGEST PARAMETERS — NOT FITTED TO TOKYO PMC88', 12, 20, '#ffd166');
   }
 }
 
@@ -522,10 +521,10 @@ function drawLongitudeChart() {
   ctx.beginPath(); ctx.moveTo(sx, pad.t); ctx.lineTo(sx, height - pad.b); ctx.stroke();
 
   ctx.fillStyle = '#7de2ab'; ctx.fillRect(pad.l, 6, 13, 3);
-  ctx.fillStyle = 'rgba(229,235,247,.85)'; ctx.fillText('Carlsberg observed', pad.l + 18, 11);
+  ctx.fillStyle = 'rgba(229,235,247,.85)'; ctx.fillText('Tokyo PMC88 observed', pad.l + 18, 11);
   if (!isObservationMode()) {
-    ctx.fillStyle = '#ff8a65'; ctx.fillRect(pad.l + 150, 6, 13, 3);
-    ctx.fillStyle = 'rgba(229,235,247,.85)'; ctx.fillText('model', pad.l + 168, 11);
+    ctx.fillStyle = '#ff8a65'; ctx.fillRect(pad.l + 170, 6, 13, 3);
+    ctx.fillStyle = 'rgba(229,235,247,.85)'; ctx.fillText('model', pad.l + 188, 11);
   }
   ctx.fillStyle = 'rgba(190,205,230,.72)';
   ctx.fillText(observations[0].date, pad.l, height - 8);
@@ -548,12 +547,12 @@ function plotSeries(ctx, values, xOf, yOf, color, lineWidth, dashed) {
 }
 
 async function init() {
-  const text = await fetch('./data/mars_observations_carlsberg.csv').then(r => {
-    if (!r.ok) throw new Error(`Carlsberg observations: HTTP ${r.status}`);
+  const text = await fetch('./data/mars_observations_tokyo_pmc88.csv').then(r => {
+    if (!r.ok) throw new Error(`Tokyo PMC88 observations: HTTP ${r.status}`);
     return r.text();
   });
   observations = parseCSV(text);
-  if (!observations.length) throw new Error('Carlsberg火星観測が0件です');
+  if (!observations.length) throw new Error('Tokyo PMC88火星観測が0件です');
 
   els.slider.max = String(observations.length - 1);
   selectedIndex = 0;

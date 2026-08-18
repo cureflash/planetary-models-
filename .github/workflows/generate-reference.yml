@@ -1,10 +1,10 @@
-name: Generate Carlsberg Mars observations
+name: Generate Tokyo PMC88 Mars observations
 
 on:
   push:
     branches: [main]
     paths:
-      - "tools/fetch_carlsberg_mars.py"
+      - "tools/fetch_tokyo_pmc88_mars.py"
       - "tools/fit_ptolemy_models.py"
       - "js/app-v4.js"
       - "models/ptolemy/**"
@@ -13,13 +13,12 @@ on:
   pull_request:
     branches: [main]
     paths:
-      - "tools/fetch_carlsberg_mars.py"
+      - "tools/fetch_tokyo_pmc88_mars.py"
       - "tools/fit_ptolemy_models.py"
       - "js/app-v4.js"
       - "models/ptolemy/**"
       - "index.html"
       - ".github/workflows/generate-reference.yml"
-      - "tools/carlsberg-pipeline-trigger.txt"
   workflow_dispatch:
 
 permissions:
@@ -40,8 +39,8 @@ jobs:
       - name: Install fitting dependencies
         run: python -m pip install --disable-pip-version-check numpy scipy
 
-      - name: Download Carlsberg Mars observations from CDS mirrors
-        run: python tools/fetch_carlsberg_mars.py
+      - name: Download Tokyo PMC88 Mars observations from CDS mirrors
+        run: python tools/fetch_tokyo_pmc88_mars.py
 
       - name: Fit Ptolemy stages to the observations
         run: python tools/fit_ptolemy_models.py
@@ -58,21 +57,21 @@ jobs:
       - name: Upload generated data for validation
         uses: actions/upload-artifact@v4
         with:
-          name: carlsberg-mars-generated
+          name: tokyo-pmc88-mars-generated
           path: |
-            data/mars_observations_carlsberg.csv
+            data/mars_observations_tokyo_pmc88.csv
             data/ptolemy_mars_fitted_parameters.json
             models/ptolemy/fitted-parameters.js
 
       - name: Commit generated observation data and fits
         run: |
-          FILES="data/mars_observations_carlsberg.csv data/ptolemy_mars_fitted_parameters.json models/ptolemy/fitted-parameters.js"
+          FILES="data/mars_observations_tokyo_pmc88.csv data/ptolemy_mars_fitted_parameters.json models/ptolemy/fitted-parameters.js"
           if [ -z "$(git status --porcelain -- $FILES)" ]; then
-            echo "Carlsberg data and fitted parameters already up to date."
+            echo "Tokyo PMC88 data and fitted parameters already up to date."
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add $FILES
-          git commit -m "Update aggregated Carlsberg Mars observations and fits"
+          git commit -m "Update Tokyo PMC88 Mars observations and fits"
           git push
