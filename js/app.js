@@ -51,6 +51,7 @@ const els = {
   rms: document.querySelector('#rms'),
   max: document.querySelector('#maxError'),
   orbit: document.querySelector('#orbitCanvas'),
+  referenceOrbit: document.querySelector('#referenceOrbitCanvas'),
   chart: document.querySelector('#longitudeChart'),
 };
 
@@ -64,9 +65,16 @@ function parseCSV(text) {
     return {
       date: obj.date,
       jd: Number(obj.jd),
-      longitudeDeg: Number(obj.geo_lon_deg),
+      earthX: Number(obj.earth_x_au),
+      earthY: Number(obj.earth_y_au),
+      earthZ: Number(obj.earth_z_au),
+      marsX: Number(obj.mars_x_au),
+      marsY: Number(obj.mars_y_au),
+      marsZ: Number(obj.mars_z_au),
       geoX: Number(obj.geo_x_au),
       geoY: Number(obj.geo_y_au),
+      geoZ: Number(obj.geo_z_au),
+      longitudeDeg: Number(obj.geo_lon_deg),
       distanceAu: Number(obj.geo_distance_au),
     };
   });
@@ -144,7 +152,8 @@ function renderSelectedDay() {
   els.predicted.textContent = `${pred.longitudeDeg.toFixed(2)}°`;
   els.reference.textContent = `${ref.longitudeDeg.toFixed(2)}°`;
   els.error.textContent = `${angularDifferenceDeg(pred.longitudeDeg, ref.longitudeDeg).toFixed(2)}°`;
-  drawOrbit(pred, ref);
+  drawModelOrbit(pred, ref);
+  drawReferenceOrbit(ref);
 }
 
 function fitCanvas(canvas) {
@@ -161,12 +170,77 @@ function fitCanvas(canvas) {
   return { ctx, width: rect.width, height: rect.height };
 }
 
-function drawOrbit(pred, ref) {
+function drawModelOrbit(pred, ref) {
   const { ctx, width, height } = fitCanvas(els.orbit);
   ctx.clearRect(0, 0, width, height);
   const g = pred.geometry;
   if (g.system) drawSystemGeometry(ctx, width, height, g, ref);
   else drawPtolemyGeometry(ctx, width, height, pred, ref);
+}
+
+function drawReferenceOrbit(ref) {
+  const { ctx, width, height } = fitCanvas(els.referenceOrbit);
+  ctx.clearRect(0, 0, width, height);
+
+  if (!Number.isFinite(ref.earthX) || !Number.isFinite(ref.marsX)) {
+    ctx.fillStyle = 'rgba(229,235,247,.85)';
+    ctx.font = '14px ui-monospace, SFMono-Regular, Menlo, monospace';
+    ctx.fillText('現代基準の軌道座標を生成中…', 24, 38);
+    return;
+  }
+
+  const extent = 1.85;
+  const scale = Math.min(width, height) * 0.43 / extent;
+  const ox = width / 2;
+  const oy = height / 2;
+  const map = p => ({ x: ox + p.x * scale, y: oy - p.y * scale });
+  drawAxes(ctx, width, height, ox, oy);
+
+  drawReferencePath(ctx, map, 'earthX', 'earthY', 'rgba(105,167,255,.58)', 2);
+  drawReferencePath(ctx, map, 'marsX', 'marsY', 'rgba(255,112,77,.58)', 2);
+
+  const sun = map({ x: 0, y: 0 });
+  const earth = map({ x: ref.earthX, y: ref.earthY });
+  const mars = map({ x: ref.marsX, y: ref.marsY });
+
+  ctx.strokeStyle = 'rgba(125,226,171,.55)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(earth.x, earth.y);
+  ctx.lineTo(mars.x, mars.y);
+  ctx.stroke();
+
+  dot(ctx, sun.x, sun.y, 8, '#ffd166');
+  label(ctx, 'SUN', sun.x + 10, sun.y - 10);
+  dot(ctx, earth.x, earth.y, 7, '#69a7ff');
+  label(ctx, 'EARTH', earth.x + 10, earth.y - 10);
+  dot(ctx, mars.x, mars.y, 7, '#ff704d');
+  label(ctx, 'MARS', mars.x + 10, mars.y - 10);
+
+  ctx.fillStyle = 'rgba(190,205,230,.72)';
+  ctx.font = '11px ui-monospace, SFMono-Regular, Menlo, monospace';
+  ctx.fillText('JPL-derived heliocentric reference', 12, 20);
+}
+
+function drawReferencePath(ctx, map, xKey, yKey, color, lineWidth) {
+  ctx.strokeStyle = color;
+  ctx.lineWidth = lineWidth;
+  ctx.beginPath();
+  let started = false;
+  for (let i = 0; i < reference.length; i += 3) {
+    const row = reference[i];
+    const x = row[xKey];
+    const y = row[yKey];
+    if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
+    const p = map({ x, y });
+    if (!started) {
+      ctx.moveTo(p.x, p.y);
+      started = true;
+    } else {
+      ctx.lineTo(p.x, p.y);
+    }
+  }
+  ctx.stroke();
 }
 
 function drawAxes(ctx, width, height, ox, oy) {
@@ -228,7 +302,7 @@ function drawSystemGeometry(ctx, width, height, g, ref) {
   ctx.beginPath(); ctx.moveTo(ro.x, ro.y); ctx.lineTo(rp.x, rp.y); ctx.stroke();
   ctx.setLineDash([]);
   dot(ctx, rp.x, rp.y, 4, '#7de2ab');
-  label(ctx, 'JPL REF.', rp.x + 8, rp.y - 8);
+  label(ctx, 'REF. DIRECTION', rp.x + 8, rp.y - 8);
 
   (g.bodies || []).forEach(body => {
     const p = map(body);
@@ -293,12 +367,14 @@ function drawPtolemyGeometry(ctx, width, height, pred, ref) {
   ctx.moveTo(earth.x, earth.y); ctx.lineTo(rp.x, rp.y); ctx.stroke();
   ctx.setLineDash([]);
   dot(ctx, rp.x, rp.y, 4, '#7de2ab');
-  label(ctx, 'JPL REF.', rp.x + 8, rp.y - 8);
+  label(ctx, 'REF. DIRECTION', rp.x + 8, rp.y - 8);
 }
 
 function dot(ctx, x, y, r, color) {
   ctx.fillStyle = color;
-  ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.fill();
 }
 
 function label(ctx, text, x, y) {
@@ -318,10 +394,12 @@ function drawLongitudeChart() {
   const predU = unwrapDegrees(currentPredictions.map(x => x.longitudeDeg));
   const branch = Math.round((refU[0] - predU[0]) / 360) * 360;
   for (let i = 0; i < predU.length; i++) predU[i] += branch;
+
   let ymin = Math.min(...refU, ...predU);
   let ymax = Math.max(...refU, ...predU);
   const margin = Math.max(20, (ymax - ymin) * 0.05);
-  ymin -= margin; ymax += margin;
+  ymin -= margin;
+  ymax += margin;
 
   const xOf = i => pad.l + i / (reference.length - 1) * w;
   const yOf = v => pad.t + (ymax - v) / (ymax - ymin) * h;
@@ -332,7 +410,10 @@ function drawLongitudeChart() {
   for (let k = 0; k <= 4; k++) {
     const yv = ymin + (ymax - ymin) * k / 4;
     const y = yOf(yv);
-    ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(width - pad.r, y); ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(pad.l, y);
+    ctx.lineTo(width - pad.r, y);
+    ctx.stroke();
     ctx.fillText(`${Math.round(yv)}°`, 3, y + 4);
   }
 
@@ -341,12 +422,19 @@ function drawLongitudeChart() {
 
   const sx = xOf(selectedIndex);
   ctx.strokeStyle = 'rgba(255,255,255,.45)';
-  ctx.beginPath(); ctx.moveTo(sx, pad.t); ctx.lineTo(sx, height - pad.b); ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(sx, pad.t);
+  ctx.lineTo(sx, height - pad.b);
+  ctx.stroke();
 
-  ctx.fillStyle = '#7de2ab'; ctx.fillRect(pad.l, 5, 13, 3);
-  ctx.fillStyle = 'rgba(229,235,247,.85)'; ctx.fillText('JPL reference', pad.l + 18, 10);
-  ctx.fillStyle = '#ff8a65'; ctx.fillRect(pad.l + 110, 5, 13, 3);
-  ctx.fillStyle = 'rgba(229,235,247,.85)'; ctx.fillText('model', pad.l + 128, 10);
+  ctx.fillStyle = '#7de2ab';
+  ctx.fillRect(pad.l, 5, 13, 3);
+  ctx.fillStyle = 'rgba(229,235,247,.85)';
+  ctx.fillText('JPL reference', pad.l + 18, 10);
+  ctx.fillStyle = '#ff8a65';
+  ctx.fillRect(pad.l + 110, 5, 13, 3);
+  ctx.fillStyle = 'rgba(229,235,247,.85)';
+  ctx.fillText('model', pad.l + 128, 10);
 
   ctx.fillStyle = 'rgba(190,205,230,.7)';
   ctx.fillText(reference[0].date, pad.l, height - 8);
@@ -359,8 +447,10 @@ function plotSeries(ctx, values, xOf, yOf, color, lineWidth) {
   ctx.lineWidth = lineWidth;
   ctx.beginPath();
   values.forEach((v, i) => {
-    const x = xOf(i), y = yOf(v);
-    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    const x = xOf(i);
+    const y = yOf(v);
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
   });
   ctx.stroke();
 }
