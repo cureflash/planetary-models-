@@ -11,11 +11,18 @@ const modelName = document.querySelector('#modelName');
 const modelDescription = document.querySelector('#modelDescription');
 const modelElements = document.querySelector('#modelElements');
 
+const MAX_CONNECTED_GAP_DAYS = 35;
 let observations = [];
-let frame = 'geocentric';
+let frame = 'sky';
 
 function normalizeDeg(deg) {
   return ((deg % 360) + 360) % 360;
+}
+
+function angularDifferenceDeg(a, b) {
+  let d = (a - b + 180) % 360;
+  if (d < 0) d += 360;
+  return d - 180;
 }
 
 function parseCSV(text) {
@@ -28,9 +35,16 @@ function parseCSV(text) {
     return {
       date: obj.date,
       jd: Number(obj.jd_ut1),
+      raDeg: Number(obj.ra_deg),
+      decDeg: Number(obj.dec_deg),
       longitudeDeg: Number(obj.ecliptic_lon_deg),
     };
-  }).filter(row => Number.isFinite(row.jd) && Number.isFinite(row.longitudeDeg));
+  }).filter(row =>
+    Number.isFinite(row.jd) &&
+    Number.isFinite(row.raDeg) &&
+    Number.isFinite(row.decDeg) &&
+    Number.isFinite(row.longitudeDeg)
+  );
 }
 
 function isObservationTab() {
@@ -79,6 +93,14 @@ function dot(ctx, x, y, radius, color) {
   ctx.fill();
 }
 
+function ring(ctx, x, y, radius, color, lineWidth = 2) {
+  ctx.strokeStyle = color;
+  ctx.lineWidth = lineWidth;
+  ctx.beginPath();
+  ctx.arc(x, y, radius, 0, Math.PI * 2);
+  ctx.stroke();
+}
+
 function label(ctx, text, x, y, color = 'rgba(229,235,247,.9)') {
   ctx.fillStyle = color;
   ctx.font = '11px ui-monospace,SFMono-Regular,Menlo,monospace';
@@ -102,6 +124,115 @@ function drawPolyline(ctx, map, points, { color, dashed = false, lineWidth = 2, 
   }
   ctx.stroke();
   ctx.restore();
+}
+
+function connectedRunBounds(index) {
+  let start = index;
+  let end = index;
+  while (start > 0 && observations[start].jd - observations[start - 1].jd <= MAX_CONNECTED_GAP_DAYS) start -= 1;
+  while (end + 1 < observations.length && observations[end + 1].jd - observations[end].jd <= MAX_CONNECTED_GAP_DAYS) end += 1;
+  return { start, end };
+}
+
+function unwrapRunRA(start, end) {
+  const out = [];
+  let previousRaw = observations[start].raDeg;
+  let unwrapped = previousRaw;
+  out.push(unwrapped);
+  for (let i = start + 1; i <= end; i++) {
+    const raw = observations[i].raDeg;
+    unwrapped += angularDifferenceDeg(raw, previousRaw);
+    out.push(unwrapped);
+    previousRaw = raw;
+  }
+  return out;
+}
+
+function paddedRange(min, max, minSpan, fraction = 0.10) {
+  let span = max - min;
+  if (span < minSpan) {
+    const center = (min + max) / 2;
+    min = center - minSpan / 2;
+    max = center + minSpan / 2;
+    span = minSpan;
+  }
+  const pad = span * fraction;
+  return { min: min - pad, max: max + pad };
+}
+
+function drawSkyTrack() {
+  const { ctx, width, height } = fitCanvas(canvas);
+  ctx.clearRect(0, 0, width, height);
+  const index = selectedIndex();
+  const { start, end } = connectedRunBounds(index);
+  const raUnwrapped = unwrapRunRA(start, end);
+  const decValues = observations.slice(start, end + 1).map(row => row.decDeg);
+
+  const raHours = raUnwrapped.map(value => value / 15);
+  const xr = paddedRange(Math.min(...raHours), Math.max(...raHours), 1.0, 0.09);
+  const yr = paddedRange(Math.min(...decValues), Math.max(...decValues), 4.0, 0.12);
+
+  const pad = { l: 58, r: 24, t: 38, b: 46 };
+  const plotW = Math.max(1, width - pad.l - pad.r);
+  const plotH = Math.max(1, height - pad.t - pad.b);
+  const xOf = value => pad.l + (value - xr.min) / Math.max(1e-9, xr.max - xr.min) * plotW;
+  const yOf = value => pad.t + (yr.max - value) / Math.max(1e-9, yr.max - yr.min) * plotH;
+
+  ctx.font = '11px ui-monospace,SFMono-Regular,Menlo,monospace';
+  ctx.lineWidth = 1;
+  for (let k = 0; k <= 5; k++) {
+    const xv = xr.min + (xr.max - xr.min) * k / 5;
+    const x = xOf(xv);
+    ctx.strokeStyle = 'rgba(150,170,205,.18)';
+    ctx.beginPath(); ctx.moveTo(x, pad.t); ctx.lineTo(x, height - pad.b); ctx.stroke();
+    ctx.fillStyle = 'rgba(190,205,230,.72)';
+    ctx.fillText(`${xv.toFixed(1)}h`, x - 14, height - 20);
+
+    const yv = yr.min + (yr.max - yr.min) * k / 5;
+    const y = yOf(yv);
+    ctx.strokeStyle = 'rgba(150,170,205,.18)';
+    ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(width - pad.r, y); ctx.stroke();
+    ctx.fillStyle = 'rgba(190,205,230,.72)';
+    ctx.fillText(`${yv.toFixed(1)}°`, 7, y + 4);
+  }
+
+  ctx.fillStyle = 'rgba(229,235,247,.86)';
+  ctx.fillText('RIGHT ASCENSION →', pad.l, height - 5);
+  ctx.save();
+  ctx.translate(13, height / 2 + 45);
+  ctx.rotate(-Math.PI / 2);
+  ctx.fillText('DECLINATION →', 0, 0);
+  ctx.restore();
+
+  const visibleEnd = Math.min(index, end);
+  const visiblePoints = [];
+  for (let i = start; i <= visibleEnd; i++) {
+    const local = i - start;
+    visiblePoints.push({
+      jd: observations[i].jd,
+      point: { x: raHours[local], y: observations[i].decDeg },
+    });
+  }
+  const map = point => ({ x: xOf(point.x), y: yOf(point.y) });
+  drawPolyline(ctx, map, visiblePoints, { color: '#7de2ab', lineWidth: 2.6 });
+
+  for (let j = 0; j < visiblePoints.length; j++) {
+    const p = map(visiblePoints[j].point);
+    dot(ctx, p.x, p.y, 2.2, 'rgba(125,226,171,.78)');
+  }
+
+  if (visiblePoints.length) {
+    const first = map(visiblePoints[0].point);
+    ring(ctx, first.x, first.y, 5, 'rgba(105,167,255,.9)', 1.6);
+    const current = map(visiblePoints.at(-1).point);
+    dot(ctx, current.x, current.y, 6.5, '#ff704d');
+    ring(ctx, current.x, current.y, 10, '#ff8a65', 1.5);
+  }
+
+  const runStart = observations[start].date;
+  const runEnd = observations[end].date;
+  label(ctx, `OBSERVING RUN ${runStart} – ${runEnd}`, pad.l, 19, '#7de2ab');
+  label(ctx, 'RAW OBSERVED RA / DEC — NO DISTANCE ASSUMED', pad.l, 33, 'rgba(229,235,247,.72)');
 }
 
 function earthHeliocentricLongitudeDeg(jd) {
@@ -140,7 +271,7 @@ function drawGeocentric() {
     color: '#7de2ab',
     dashed: true,
     lineWidth: 2.2,
-    maxGapDays: 35,
+    maxGapDays: MAX_CONNECTED_GAP_DAYS,
   });
   for (const item of history) {
     const p = map(item.point);
@@ -154,7 +285,7 @@ function drawGeocentric() {
   label(ctx, 'EARTH (FIXED)', earth.x + 10, earth.y - 10);
   dot(ctx, direction.x, direction.y, 8, '#ff704d');
   label(ctx, 'MARS (OBSERVED DIRECTION)', direction.x + 10, direction.y - 10);
-  label(ctx, 'USNO W2J00 / MEASURED DIRECTION', 12, 20, '#7de2ab');
+  label(ctx, 'DIRECTION ONLY — THIS IS NOT A PHYSICAL ORBIT', 12, 20, '#ffd166');
 }
 
 function drawHeliocentric() {
@@ -180,7 +311,7 @@ function drawHeliocentric() {
   drawPolyline(ctx, map, earthTrail, {
     color: 'rgba(105,167,255,.58)',
     lineWidth: 1.6,
-    maxGapDays: 35,
+    maxGapDays: MAX_CONNECTED_GAP_DAYS,
   });
 
   const rayLength = 2.0;
@@ -219,14 +350,24 @@ function drawHeliocentric() {
 
 function applyObservationLabels() {
   if (!isObservationTab()) return;
-  if (frame === 'geocentric') {
-    stageLabel.textContent = 'USNO W2J00 / GEOCENTRIC';
+  if (frame === 'sky') {
+    const index = selectedIndex();
+    const { start, end } = connectedRunBounds(index);
+    stageLabel.textContent = 'USNO W2J00 / RA–DEC SKY TRACK';
+    modelName.textContent = '実観測・天球上の火星軌跡';
+    modelDescription.textContent = 'USNO W2J00が実際に測った火星の赤経と赤緯を、そのまま2次元の天球座標に描きます。逆行すると進行方向が反転し、観測条件がそろった区間ではループ状の見かけの軌跡が現れます。';
+    modelElements.innerHTML = ['実観測RA', '実観測Dec', '距離不要', '逆行ループ', '軌道理論なし'].map(x => `<span>${x}</span>`).join('');
+    orbitKicker.textContent = 'ACTUAL ASTROMETRY / SKY PLANE';
+    orbitTitle.textContent = '実観測：赤経 × 赤緯の天球上の軌跡';
+    orbitNote.textContent = `スライダー位置を含む連続観測区間（${observations[start].date}〜${observations[end].date}）を自動拡大しています。緑線は実測点を時系列で結んだもの、橙点が現在位置です。赤経0hをまたぐ場合も連続するよう補正します。35日を超える欠測は別区間として扱います。`;
+  } else if (frame === 'geocentric') {
+    stageLabel.textContent = 'USNO W2J00 / GEOCENTRIC DIRECTION';
     modelName.textContent = '実観測・天動説表示（地球固定）';
-    modelDescription.textContent = 'USNO W2J00の火星実観測を、地球を固定した座標で表示します。観測された方向だけを使い、火星までの距離は仮定しません。';
-    modelElements.innerHTML = ['地球固定', '実観測RA/Dec', '地心黄経', '距離は不明'].map(x => `<span>${x}</span>`).join('');
-    orbitKicker.textContent = 'ACTUAL ASTROMETRY / GEOCENTRIC';
+    modelDescription.textContent = 'USNO W2J00の火星実観測を、地球を固定した方向表示にします。一定半径は見やすさのためだけで、火星までの距離や物理的軌道を表しません。';
+    modelElements.innerHTML = ['地球固定', '実測方向', '地心黄経', '距離は不明'].map(x => `<span>${x}</span>`).join('');
+    orbitKicker.textContent = 'ACTUAL ASTROMETRY / GEOCENTRIC DIRECTION';
     orbitTitle.textContent = '実観測：天動説表示（地球固定）';
-    orbitNote.textContent = 'USNO W2J00で実際に測定された火星の見かけ方向です。35日を超える欠測区間は線を切っています。火星までの距離は観測表にないため、方向を見せるための一定半径に置いています。';
+    orbitNote.textContent = 'USNO W2J00で実際に測定された火星の見かけ方向です。35日を超える欠測区間は線を切っています。円周上の半径は表示用であり、火星の実際の距離や軌道ではありません。';
   } else {
     stageLabel.textContent = 'USNO W2J00 / HELIOCENTRIC FRAME';
     modelName.textContent = '実観測・地動説表示（太陽固定）';
@@ -241,7 +382,8 @@ function applyObservationLabels() {
 function draw() {
   if (!isObservationTab() || !observations.length || !canvas) return;
   applyObservationLabels();
-  if (frame === 'heliocentric') drawHeliocentric();
+  if (frame === 'sky') drawSkyTrack();
+  else if (frame === 'heliocentric') drawHeliocentric();
   else drawGeocentric();
 }
 
@@ -252,7 +394,7 @@ function updateVisibility() {
 }
 
 function setFrame(next) {
-  if (!['geocentric', 'heliocentric'].includes(next)) return;
+  if (!['sky', 'geocentric', 'heliocentric'].includes(next)) return;
   frame = next;
   buttons.forEach(button => {
     const active = button.dataset.observationFrame === frame;
@@ -264,7 +406,7 @@ function setFrame(next) {
 
 async function init() {
   if (!panel || !canvas || !slider) return;
-  const text = await fetch('./data/mars_observations_usno_w2j00.csv?v=usno-w2j00-1').then(response => {
+  const text = await fetch('./data/mars_observations_usno_w2j00.csv?v=usno-w2j00-sky-1').then(response => {
     if (!response.ok) throw new Error(`USNO W2J00 observations: HTTP ${response.status}`);
     return response.text();
   });
