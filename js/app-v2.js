@@ -1,10 +1,11 @@
 const THEORIES = [
+  { id: 'observation', label: '観測データ', files: [] },
   {
     id: 'ptolemy', label: 'プトレマイオス',
     files: [
       '../models/ptolemy/01-simple-circle.js',
-      '../models/ptolemy/02-eccentric.js',
-      '../models/ptolemy/03-epicycle.js',
+      '../models/ptolemy/02-epicycle.js',
+      '../models/ptolemy/03-epicycle-eccentric.js',
       '../models/ptolemy/04-equant.js',
     ],
     historicalFile: '../models/ptolemy/05-almagest-mars.js',
@@ -13,6 +14,18 @@ const THEORIES = [
   { id: 'copernicus', label: 'コペルニクス', files: ['../models/copernicus/01-heliocentric-circles.js'] },
   { id: 'kepler', label: 'ケプラー', files: ['../models/kepler/01-elliptic-orbits.js'] },
 ];
+
+const OBSERVATION_MODEL = {
+  model: {
+    id: 'observation',
+    stage: 0,
+    name: '地球固定・火星観測データ',
+    shortName: '観測データ',
+    sourceFile: 'data/mars_reference_2020_2030.csv',
+    description: '地球を画面中央に固定し、基準データの地心座標に従って火星だけを動かします。日付スライダーを動かすと、火星の順行・留・逆行をそのまま追えます。',
+    elements: ['地球固定', '火星のみ表示', '地心座標', '基準データ'],
+  },
+};
 
 let reference = [];
 let theoryIndex = 0;
@@ -38,6 +51,14 @@ const els = {
   predicted: document.querySelector('#predictedLongitude'),
   reference: document.querySelector('#referenceLongitude'),
   error: document.querySelector('#angularError'),
+  predictedTerm: document.querySelector('#predictedTerm'),
+  referenceTerm: document.querySelector('#referenceTerm'),
+  errorTerm: document.querySelector('#errorTerm'),
+  orbitKicker: document.querySelector('#orbitKicker'),
+  orbitTitle: document.querySelector('#orbitTitle'),
+  orbitNote: document.querySelector('#orbitNote'),
+  chartKicker: document.querySelector('#chartKicker'),
+  chartTitle: document.querySelector('#chartTitle'),
   mae: document.querySelector('#mae'),
   rms: document.querySelector('#rms'),
   max: document.querySelector('#maxError'),
@@ -78,6 +99,10 @@ function unwrapDegrees(values) {
   return out;
 }
 
+function isObservationMode() {
+  return THEORIES[theoryIndex].id === 'observation';
+}
+
 function filesForTheory(theory) {
   if (theory.id === 'ptolemy' && ptolemyMode === 'almagest') return [theory.historicalFile];
   return theory.files;
@@ -115,13 +140,25 @@ async function setPtolemyMode(mode) {
 
 async function switchModel(newIndex) {
   const theory = THEORIES[theoryIndex];
-  const files = filesForTheory(theory);
-  stageIndex = (newIndex + files.length) % files.length;
-  const file = files[stageIndex];
-  currentModule = await import(`${file}?theory=${theory.id}&mode=${ptolemyMode}&stage=${stageIndex}`);
-  currentPredictions = reference.map(row => currentModule.predict(row.jd));
-  els.prev.disabled = files.length <= 1;
-  els.next.disabled = files.length <= 1;
+  if (theory.id === 'observation') {
+    stageIndex = 0;
+    currentModule = OBSERVATION_MODEL;
+    currentPredictions = reference.map(row => ({
+      longitudeDeg: row.longitudeDeg,
+      mars: { x: row.geoX, y: row.geoY },
+      geometry: { system: 'observation' },
+    }));
+    els.prev.disabled = true;
+    els.next.disabled = true;
+  } else {
+    const files = filesForTheory(theory);
+    stageIndex = (newIndex + files.length) % files.length;
+    const file = files[stageIndex];
+    currentModule = await import(`${file}?theory=${theory.id}&mode=${ptolemyMode}&stage=${stageIndex}`);
+    currentPredictions = reference.map(row => currentModule.predict(row.jd));
+    els.prev.disabled = files.length <= 1;
+    els.next.disabled = files.length <= 1;
+  }
   renderModelHeader();
   renderStatistics();
   renderSelectedDay();
@@ -132,7 +169,9 @@ function renderModelHeader() {
   const theory = THEORIES[theoryIndex];
   const files = filesForTheory(theory);
   const m = currentModule.model;
-  if (theory.id === 'ptolemy' && ptolemyMode === 'almagest') {
+  if (theory.id === 'observation') {
+    els.stage.textContent = 'OBSERVATION / GEOCENTRIC';
+  } else if (theory.id === 'ptolemy' && ptolemyMode === 'almagest') {
     els.stage.textContent = 'ALMAGEST / HISTORICAL PARAMETERS';
   } else if (files.length > 1) {
     els.stage.textContent = `STAGE ${stageIndex + 1} / ${files.length}`;
@@ -143,9 +182,38 @@ function renderModelHeader() {
   els.description.textContent = m.description;
   els.elements.innerHTML = m.elements.map(x => `<span>${x}</span>`).join('');
   els.source.textContent = m.sourceFile;
+  updateViewLabels();
+}
+
+function updateViewLabels() {
+  if (isObservationMode()) {
+    els.orbitKicker.textContent = 'OBSERVED MOTION';
+    els.orbitTitle.textContent = '地球を固定した火星の動き';
+    els.orbitNote.textContent = '地球を中央に固定し、2020–2030年の基準データの地心座標に従って火星を表示します。日付スライダーを動かすと、火星の見かけの運動だけを追えます。';
+    els.chartKicker.textContent = '2020–2030';
+    els.chartTitle.textContent = '火星の地心黄経：観測データ';
+    els.predictedTerm.textContent = '火星の地心黄経';
+    els.referenceTerm.textContent = '地心距離';
+    els.errorTerm.textContent = '表示座標';
+  } else {
+    els.orbitKicker.textContent = 'MODEL + REFERENCE';
+    els.orbitTitle.textContent = 'モデルと現代基準の火星';
+    els.orbitNote.textContent = '赤い MARS がモデル予測、緑の REF MARS が現代基準です。プトレマイオスでは物理的距離を比較できないため、同じ半径上で方向だけを比較します。';
+    els.chartKicker.textContent = '2020–2030';
+    els.chartTitle.textContent = '火星の地心黄経：モデル vs 基準データ';
+    els.predictedTerm.textContent = 'モデル予測';
+    els.referenceTerm.textContent = '現代基準値';
+    els.errorTerm.textContent = '角度誤差';
+  }
 }
 
 function renderStatistics() {
+  if (isObservationMode()) {
+    els.mae.textContent = '—';
+    els.rms.textContent = '—';
+    els.max.textContent = '—';
+    return;
+  }
   const errors = currentPredictions.map((p, i) => angularDifferenceDeg(p.longitudeDeg, reference[i].longitudeDeg));
   const mae = errors.reduce((s, e) => s + Math.abs(e), 0) / errors.length;
   const rms = Math.sqrt(errors.reduce((s, e) => s + e * e, 0) / errors.length);
@@ -160,9 +228,15 @@ function renderSelectedDay() {
   const pred = currentPredictions[selectedIndex];
   if (!ref || !pred) return;
   els.date.textContent = ref.date;
-  els.predicted.textContent = `${pred.longitudeDeg.toFixed(2)}°`;
-  els.reference.textContent = `${ref.longitudeDeg.toFixed(2)}°`;
-  els.error.textContent = `${angularDifferenceDeg(pred.longitudeDeg, ref.longitudeDeg).toFixed(2)}°`;
+  if (isObservationMode()) {
+    els.predicted.textContent = `${ref.longitudeDeg.toFixed(2)}°`;
+    els.reference.textContent = `${ref.distanceAu.toFixed(3)} AU`;
+    els.error.textContent = '地球固定';
+  } else {
+    els.predicted.textContent = `${pred.longitudeDeg.toFixed(2)}°`;
+    els.reference.textContent = `${ref.longitudeDeg.toFixed(2)}°`;
+    els.error.textContent = `${angularDifferenceDeg(pred.longitudeDeg, ref.longitudeDeg).toFixed(2)}°`;
+  }
   drawModelOrbit(pred, ref);
   drawReferenceOrbit(ref);
 }
@@ -209,8 +283,40 @@ function labelGreen(ctx, text, x, y) {
 function drawModelOrbit(pred, ref) {
   const { ctx, width, height } = fitCanvas(els.orbit);
   ctx.clearRect(0, 0, width, height);
-  if (pred.geometry.system) drawSystemGeometry(ctx, width, height, pred.geometry, ref);
+  if (isObservationMode()) drawObservationGeometry(ctx, width, height, ref);
+  else if (pred.geometry.system) drawSystemGeometry(ctx, width, height, pred.geometry, ref);
   else drawPtolemyGeometry(ctx, width, height, pred, ref);
+}
+
+function drawObservationGeometry(ctx, width, height, ref) {
+  const extent = 2.75;
+  const scale = Math.min(width, height) * 0.42 / extent;
+  const ox = width / 2, oy = height / 2;
+  const map = p => ({ x: ox + p.x * scale, y: oy - p.y * scale });
+  drawAxes(ctx, width, height, ox, oy);
+
+  ctx.strokeStyle = 'rgba(255,112,77,.42)';
+  ctx.lineWidth = 1.6;
+  ctx.beginPath();
+  let started = false;
+  for (let i = 0; i < reference.length; i += 2) {
+    const row = reference[i];
+    if (!Number.isFinite(row.geoX) || !Number.isFinite(row.geoY)) continue;
+    const p = map({ x: row.geoX, y: row.geoY });
+    if (!started) { ctx.moveTo(p.x, p.y); started = true; } else ctx.lineTo(p.x, p.y);
+  }
+  ctx.stroke();
+
+  const earth = map({ x: 0, y: 0 });
+  const mars = map({ x: ref.geoX, y: ref.geoY });
+  ctx.strokeStyle = 'rgba(125,226,171,.48)';
+  ctx.lineWidth = 1.3;
+  ctx.beginPath(); ctx.moveTo(earth.x, earth.y); ctx.lineTo(mars.x, mars.y); ctx.stroke();
+  dot(ctx, earth.x, earth.y, 8, '#69a7ff'); label(ctx, 'EARTH (FIXED)', earth.x + 10, earth.y - 10);
+  dot(ctx, mars.x, mars.y, 8, '#ff704d'); label(ctx, 'MARS', mars.x + 10, mars.y - 10);
+  ctx.fillStyle = 'rgba(190,205,230,.72)';
+  ctx.font = '11px ui-monospace,SFMono-Regular,Menlo,monospace';
+  ctx.fillText('GEOCENTRIC REFERENCE DATA', 12, 20);
 }
 
 function drawReferenceOrbit(ref) {
@@ -337,10 +443,13 @@ function drawLongitudeChart() {
   const pad = { l: 48, r: 18, t: 22, b: 30 };
   const w = width - pad.l - pad.r, h = height - pad.t - pad.b;
   const refU = unwrapDegrees(reference.map(x => x.longitudeDeg));
-  const predU = unwrapDegrees(currentPredictions.map(x => x.longitudeDeg));
-  const branch = Math.round((refU[0] - predU[0]) / 360) * 360;
-  for (let i = 0; i < predU.length; i++) predU[i] += branch;
-  let ymin = Math.min(...refU, ...predU), ymax = Math.max(...refU, ...predU);
+  const predU = isObservationMode() ? [] : unwrapDegrees(currentPredictions.map(x => x.longitudeDeg));
+  if (!isObservationMode()) {
+    const branch = Math.round((refU[0] - predU[0]) / 360) * 360;
+    for (let i = 0; i < predU.length; i++) predU[i] += branch;
+  }
+  let ymin = isObservationMode() ? Math.min(...refU) : Math.min(...refU, ...predU);
+  let ymax = isObservationMode() ? Math.max(...refU) : Math.max(...refU, ...predU);
   const margin = Math.max(20, (ymax - ymin) * 0.05); ymin -= margin; ymax += margin;
   const xOf = i => pad.l + i / (reference.length - 1) * w;
   const yOf = v => pad.t + (ymax - v) / (ymax - ymin) * h;
@@ -349,10 +458,13 @@ function drawLongitudeChart() {
     const yv = ymin + (ymax - ymin) * k / 4, y = yOf(yv);
     ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(width - pad.r, y); ctx.stroke(); ctx.fillText(`${Math.round(yv)}°`, 3, y + 4);
   }
-  plotSeries(ctx, refU, xOf, yOf, '#7de2ab', 2); plotSeries(ctx, predU, xOf, yOf, '#ff8a65', 2);
+  plotSeries(ctx, refU, xOf, yOf, '#7de2ab', 2);
+  if (!isObservationMode()) plotSeries(ctx, predU, xOf, yOf, '#ff8a65', 2);
   const sx = xOf(selectedIndex); ctx.strokeStyle = 'rgba(255,255,255,.45)'; ctx.beginPath(); ctx.moveTo(sx, pad.t); ctx.lineTo(sx, height - pad.b); ctx.stroke();
-  ctx.fillStyle = '#7de2ab'; ctx.fillRect(pad.l, 5, 13, 3); ctx.fillStyle = 'rgba(229,235,247,.85)'; ctx.fillText('reference', pad.l + 18, 10);
-  ctx.fillStyle = '#ff8a65'; ctx.fillRect(pad.l + 110, 5, 13, 3); ctx.fillStyle = 'rgba(229,235,247,.85)'; ctx.fillText('model', pad.l + 128, 10);
+  ctx.fillStyle = '#7de2ab'; ctx.fillRect(pad.l, 5, 13, 3); ctx.fillStyle = 'rgba(229,235,247,.85)'; ctx.fillText(isObservationMode() ? 'observation' : 'reference', pad.l + 18, 10);
+  if (!isObservationMode()) {
+    ctx.fillStyle = '#ff8a65'; ctx.fillRect(pad.l + 110, 5, 13, 3); ctx.fillStyle = 'rgba(229,235,247,.85)'; ctx.fillText('model', pad.l + 128, 10);
+  }
   ctx.fillStyle = 'rgba(190,205,230,.7)'; ctx.fillText(reference[0].date, pad.l, height - 8);
   const end = reference[reference.length - 1].date; ctx.fillText(end, width - pad.r - ctx.measureText(end).width, height - 8);
 }
