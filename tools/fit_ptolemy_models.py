@@ -26,9 +26,9 @@ def pred1(tt,p):
     return wrap(WM*tt+p[0])
 
 def pred2(tt,p):
-    ecc,apsis,phase=p
-    c=ecc*np.exp(1j*apsis)
-    return lon(c+np.exp(1j*(WM*tt+phase)))
+    phase_m,r,phase_e=p
+    d=np.exp(1j*(WM*tt+phase_m))
+    return lon(d+r*np.exp(1j*(WE*tt+phase_e)))
 
 def pred3(tt,p):
     ecc,apsis,phase_m,r,phase_e=p
@@ -54,8 +54,8 @@ def pred4(tt,p):
 
 models=[
  ('simple_circle',pred1,[(0,2*np.pi)]),
- ('eccentric',pred2,[(0,0.35),(0,2*np.pi),(0,2*np.pi)]),
- ('epicycle',pred3,[(0,0.35),(0,2*np.pi),(0,2*np.pi),(0.35,0.9),(0,2*np.pi)]),
+ ('epicycle_only',pred2,[(0,2*np.pi),(0.35,0.9),(0,2*np.pi)]),
+ ('epicycle_eccentric',pred3,[(0,0.35),(0,2*np.pi),(0,2*np.pi),(0.35,0.9),(0,2*np.pi)]),
  ('equant',pred4,[(0,0.35),(0,2*np.pi),(0,2*np.pi),(0.35,0.9),(0,2*np.pi)]),
 ]
 result={
