@@ -1,16 +1,14 @@
-// Model 2: Earth-centered deferent + epicycle, without eccentric or equant.
-// Independent program: it does not call the Model 1 implementation.
+import { PTOLEMY_FIT } from './fitted-parameters.js';
 
-const EPOCH_JD = 2458849.5;
-const MARS_PERIOD_DAYS = 686.97959;
-const EARTH_PERIOD_DAYS = 365.256363004;
+// Model 2: Earth-centered deferent + epicycle, without eccentric or equant.
+const EPOCH_JD = PTOLEMY_FIT.constants.epoch_jd;
+const MARS_PERIOD_DAYS = PTOLEMY_FIT.constants.mars_period_days;
+const EARTH_PERIOD_DAYS = PTOLEMY_FIT.constants.earth_period_days;
 const OMEGA_MARS = 2 * Math.PI / MARS_PERIOD_DAYS;
 const OMEGA_EPICYCLE = 2 * Math.PI / EARTH_PERIOD_DAYS;
 const R = 1.0;
-
-const DEFERENT_PHASE = 3.92419707;
-const EPICYCLE_RADIUS = 0.67173831;
-const EPICYCLE_PHASE = 4.80430219;
+const [DEFERENT_PHASE, EPICYCLE_RADIUS, EPICYCLE_PHASE] = PTOLEMY_FIT.models.epicycle_only.parameters;
+const stats = PTOLEMY_FIT.models.epicycle_only.stats;
 
 export const model = {
   id: 'epicycle-only',
@@ -18,9 +16,9 @@ export const model = {
   name: '周転円',
   shortName: '周転円',
   sourceFile: 'models/ptolemy/02-epicycle.js',
-  description: '地球中心の従円に周転円だけを追加します。逆行そのものは再現できますが、長期間の火星位置にはまだ大きなずれが残ります。',
-  elements: ['地球中心', '従円', '周転円', '一様円運動'],
-  fittedStats: { maeDeg: 6.6945, rmsDeg: 8.4696, maxAbsDeg: 33.3440 },
+  description: '地球中心の従円に周転円だけを追加します。逆行を再現し、Carlsbergの実観測火星位置に位相と周転円半径を合わせています。',
+  elements: ['地球中心', '従円', '周転円', '一様円運動', 'Carlsberg実観測で評価'],
+  fittedStats: { maeDeg: stats.mae_deg, rmsDeg: stats.rms_deg, maxAbsDeg: stats.max_abs_deg },
 };
 
 function normalizeDeg(deg) {

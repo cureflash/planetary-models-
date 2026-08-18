@@ -1,4 +1,5 @@
-{
+// Auto-generated from Carlsberg Mars observations by tools/fit_ptolemy_models.py.
+export const PTOLEMY_FIT = {
   "source": {
     "catalog": "Carlsberg Meridian Catalog individual planet-observation tables",
     "volumes": [
@@ -69,4 +70,4 @@
       }
     }
   }
-}
+};

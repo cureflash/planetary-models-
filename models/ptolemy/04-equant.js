@@ -1,18 +1,15 @@
-// Model 4: epicycle + eccentric deferent + equant.
-// Independent program: previous model files are not imported.
+import { PTOLEMY_FIT } from './fitted-parameters.js';
 
-const EPOCH_JD = 2458849.5;
-const MARS_PERIOD_DAYS = 686.97959;
-const EARTH_PERIOD_DAYS = 365.256363004;
+// Model 4: epicycle + eccentric deferent + equant.
+const EPOCH_JD = PTOLEMY_FIT.constants.epoch_jd;
+const MARS_PERIOD_DAYS = PTOLEMY_FIT.constants.mars_period_days;
+const EARTH_PERIOD_DAYS = PTOLEMY_FIT.constants.earth_period_days;
 const OMEGA_MARS = 2 * Math.PI / MARS_PERIOD_DAYS;
 const OMEGA_EPICYCLE = 2 * Math.PI / EARTH_PERIOD_DAYS;
 const R = 1.0;
-
-const ECCENTRICITY_DISTANCE = 0.09869241;
-const APSIS_ANGLE = 2.64475709;
-const EQUANT_PHASE = 3.89634728;
-const EPICYCLE_RADIUS = 0.65715804;
-const EPICYCLE_PHASE = 4.88197935;
+const [ECCENTRICITY_DISTANCE, APSIS_ANGLE, EQUANT_PHASE, EPICYCLE_RADIUS, EPICYCLE_PHASE] =
+  PTOLEMY_FIT.models.equant.parameters;
+const stats = PTOLEMY_FIT.models.equant.stats;
 
 export const model = {
   id: 'equant',
@@ -20,9 +17,9 @@ export const model = {
   name: '周転円＋離心円＋エカント',
   shortName: 'エカント',
   sourceFile: 'models/ptolemy/04-equant.js',
-  description: '周転円と離心円にエカントを追加します。周転円の中心は、エカントから見た角度が一定速度で増えるように離心円上を動きます。',
-  elements: ['周転円', '離心円', 'エカント'],
-  fittedStats: { maeDeg: 0.2436, rmsDeg: 0.2971, maxAbsDeg: 0.9274 },
+  description: '周転円と離心円にエカントを追加します。Carlsbergの実観測火星位置に各パラメータを合わせています。',
+  elements: ['周転円', '離心円', 'エカント', 'Carlsberg実観測で評価'],
+  fittedStats: { maeDeg: stats.mae_deg, rmsDeg: stats.rms_deg, maxAbsDeg: stats.max_abs_deg },
 };
 
 function normalizeDeg(deg) {
