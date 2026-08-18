@@ -34,7 +34,7 @@ jobs:
       - name: Install fitting dependencies
         run: python -m pip install --disable-pip-version-check numpy scipy
 
-      - name: Download Carlsberg CMC4 Mars observations from CDS
+      - name: Download Carlsberg Mars observations from CDS mirrors
         run: python tools/fetch_carlsberg_mars.py
 
       - name: Fit Ptolemy stages to the observations
@@ -45,13 +45,13 @@ jobs:
         with:
           name: carlsberg-mars-generated
           path: |
-            data/mars_observations_carlsberg_cmc4_1984_1988.csv
+            data/mars_observations_carlsberg.csv
             data/ptolemy_mars_fitted_parameters.json
             models/ptolemy/fitted-parameters.js
 
       - name: Commit generated observation data and fits
         run: |
-          FILES="data/mars_observations_carlsberg_cmc4_1984_1988.csv data/ptolemy_mars_fitted_parameters.json models/ptolemy/fitted-parameters.js"
+          FILES="data/mars_observations_carlsberg.csv data/ptolemy_mars_fitted_parameters.json models/ptolemy/fitted-parameters.js"
           if [ -z "$(git status --porcelain -- $FILES)" ]; then
             echo "Carlsberg data and fitted parameters already up to date."
             exit 0
@@ -59,5 +59,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add $FILES
-          git commit -m "Update Carlsberg CMC4 Mars observations and fits"
+          git commit -m "Update aggregated Carlsberg Mars observations and fits"
           git push
