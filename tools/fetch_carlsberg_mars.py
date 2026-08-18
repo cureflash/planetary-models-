@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import csv
+import gzip
 import math
 import urllib.request
 from datetime import datetime, timedelta, timezone
@@ -11,12 +12,11 @@ OUT = ROOT / "data" / "mars_observations_carlsberg_cmc4_1984_1988.csv"
 MARS_CMC_CODE = 99040
 
 # CMC4 supersedes CMC1-3 and contains observations made May 1984-Feb 1988.
-# CDS ReadMe I/147 identifies table2.dat as the raw planet-observation table;
+# CDS ReadMe I/147 identifies table2.dat as the planet-observation table;
 # code 99040 is Mars. Positions are apparent geocentric RA/Dec, equinox of date.
 URLS = [
-    "https://cdsarc.cds.unistra.fr/ftp/cats/I/147/table2.dat",
-    "https://cdsarc.u-strasbg.fr/ftp/cats/I/147/table2.dat",
-    "https://cdsarc.cds.unistra.fr/ftp/I/147/table2.dat",
+    "https://vizier.cfa.harvard.edu/ftp/cats/I/147/table2.dat.gz",
+    "https://cdsarc.cds.unistra.fr/ftp/cats/I/147/table2.dat.gz",
 ]
 
 
@@ -29,10 +29,11 @@ def download_table() -> str:
                 headers={"User-Agent": "planetary-models-educational-site/1.0"},
             )
             with urllib.request.urlopen(request, timeout=60) as response:
-                text = response.read().decode("ascii", errors="replace")
+                payload = response.read()
+            text = gzip.decompress(payload).decode("ascii", errors="replace")
             if len(text.splitlines()) < 1000:
                 raise RuntimeError("downloaded file is unexpectedly short")
-            print(f"downloaded CMC4 table2.dat from {url}")
+            print(f"downloaded CMC4 table2.dat.gz from {url}")
             return text
         except Exception as exc:
             print(f"failed {url}: {exc}")
