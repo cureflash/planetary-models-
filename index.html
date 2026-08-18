@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="color-scheme" content="dark">
   <title>Planetary Models | Mars model comparison</title>
-  <link rel="stylesheet" href="./css/style.css">
+  <link rel="stylesheet" href="./css/style.css?v=tokyo-pmc88-frames-1">
 </head>
 <body>
   <main id="app" class="shell">
@@ -22,6 +22,17 @@
       <button class="theory-tab" data-theory="copernicus">コペルニクス</button>
       <button class="theory-tab" data-theory="kepler">ケプラー</button>
     </nav>
+
+    <section id="observationFramePanel" class="parameter-switch card" aria-label="実観測の座標表示">
+      <div>
+        <span class="kicker">OBSERVATION FRAME</span>
+        <p>同じTokyo PMC88実測データを、地球固定と太陽固定の2つの座標表示で見ます。</p>
+      </div>
+      <div class="segmented" role="group" aria-label="実観測の表示座標">
+        <button class="parameter-button active" data-observation-frame="geocentric" aria-pressed="true">天動説表示・地球固定</button>
+        <button class="parameter-button" data-observation-frame="heliocentric" aria-pressed="false">地動説表示・太陽固定</button>
+      </div>
+    </section>
 
     <section id="ptolemyParameterPanel" class="parameter-switch card" aria-label="プトレマイオスのパラメータセット" hidden>
       <div>
@@ -55,7 +66,7 @@
           <div><span id="orbitKicker" class="kicker">ACTUAL ASTROMETRY</span><h3 id="orbitTitle">地球を固定した火星の実観測方向</h3></div>
         </div>
         <canvas id="orbitCanvas" aria-label="火星の実観測または選択中の惑星モデル"></canvas>
-        <p id="orbitNote" class="note">地球を中央に固定し、Tokyo PMC88で1986〜1988年に実際に測定された火星の見かけ方向を表示します。</p>
+        <p id="orbitNote" class="note">Tokyo PMC88で1986〜1988年に実際に測定された火星の見かけ方向を表示します。</p>
       </article>
     </section>
 
@@ -93,12 +104,14 @@
     <section class="card methodology">
       <span class="kicker">METHOD</span>
       <h3>このページで何を比較しているか</h3>
-      <p>実観測モードでは地球を画面中央に固定し、Tokyo Photoelectric Meridian Circle Catalog 1988の惑星個別観測で得られた火星の見かけ方向だけを一定半径上に描きます。79観測点は1986年1月24日から1988年12月30日までの約2.93年間に分布します。距離は観測データに含まれないため表示には使いません。</p>
-      <p>緑の破線はTokyo PMC88実観測、赤い実線は選択中モデルの軌跡です。どちらもスライダー位置までに得られた部分だけを表示します。観測が大きく途切れた区間は、実際に連続観測したかのように見せないため破線を切ります。</p>
-      <p>プトレマイオスのTokyo PMC88フィットは、単純円 → 周転円 → 周転円＋離心円 → 周転円＋離心円＋エカントの順です。各段階を79点の火星実観測の地心方向に合わせ、同じ観測点で角度誤差を評価します。</p>
-      <p>元データはUT1の観測日時と、equinox of dateの見かけの地心赤経・赤緯です。画面では赤経・赤緯を黄道座標へ回転して比較しています。この変換は座標系の変換であり、太陽中心の惑星軌道を前提にした基準暦ではありません。</p>
+      <p>実観測はTokyo Photoelectric Meridian Circle Catalog 1988の火星79観測点で、1986年1月24日から1988年12月30日まで約2.93年間あります。元データは地球から測った見かけの地心赤経・赤緯です。</p>
+      <p>「天動説表示・地球固定」では、観測された方向だけを地球中心の一定半径上に描きます。火星までの距離は実観測に含まれないため、半径には物理的な意味を持たせません。</p>
+      <p>「地動説表示・太陽固定」では、太陽を中央に固定し、日付から求めた太陽黄経の近似を使って地球位置を置き、各Tokyo PMC88観測を地球から伸びる実測視線として描きます。ここでも火星の距離は仮定せず、火星の太陽中心位置そのものを実測値として捏造しません。</p>
+      <p>緑はTokyo PMC88実観測、赤は選択中モデルです。プトレマイオスのTokyo PMC88フィットは、単純円 → 周転円 → 周転円＋離心円 → 周転円＋離心円＋エカントの順で、同じ79観測点への角度誤差を評価します。</p>
+      <p>画面で使う地心黄経は、観測された赤経・赤緯を黄道座標へ回転して求めたものです。この座標変換自体には太陽中心の火星軌道モデルを使っていません。</p>
     </section>
   </main>
-  <script type="module" src="./js/app-v4.js"></script>
+  <script type="module" src="./js/app-v4.js?v=tokyo-pmc88-frames-1"></script>
+  <script type="module" src="./js/observation-frames.js?v=tokyo-pmc88-frames-1"></script>
 </body>
 </html>
