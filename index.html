@@ -12,11 +12,11 @@
     <header class="hero">
       <p class="eyebrow">PLANETARY MODELS / MARS</p>
       <h1>Planetary Models</h1>
-      <p class="lead">地球を固定した火星の観測データと、プトレマイオス、ティコ、コペルニクス、ケプラーのモデルを比較する。</p>
+      <p class="lead">Carlsberg Meridian Catalogの火星実観測と、プトレマイオス、ティコ、コペルニクス、ケプラーのモデルを比較する。</p>
     </header>
 
     <nav class="theory-tabs" aria-label="天文学モデル">
-      <button class="theory-tab active" data-theory="observation" aria-current="page">観測データ</button>
+      <button class="theory-tab active" data-theory="observation" aria-current="page">Carlsberg実観測</button>
       <button class="theory-tab" data-theory="ptolemy">プトレマイオス</button>
       <button class="theory-tab" data-theory="tycho">ティコ・ブラーエ</button>
       <button class="theory-tab" data-theory="copernicus">コペルニクス</button>
@@ -26,10 +26,10 @@
     <section id="ptolemyParameterPanel" class="parameter-switch card" aria-label="プトレマイオスのパラメータセット" hidden>
       <div>
         <span class="kicker">PTOLEMY PARAMETER SET</span>
-        <p>同じプトレマイオス型の幾何を、現代データへのフィット値と『アルマゲスト』の史実値で切り替えます。</p>
+        <p>同じプトレマイオス型の幾何を、Carlsberg実観測へのフィット値と『アルマゲスト』の史実値で切り替えます。</p>
       </div>
       <div class="segmented" role="group" aria-label="パラメータセット">
-        <button class="parameter-button active" data-ptolemy-mode="fitted" aria-pressed="true">現代フィット</button>
+        <button class="parameter-button active" data-ptolemy-mode="fitted" aria-pressed="true">Carlsbergフィット</button>
         <button class="parameter-button" data-ptolemy-mode="almagest" aria-pressed="false">アルマゲスト史実値</button>
       </div>
     </section>
@@ -37,7 +37,7 @@
     <section class="model-switcher" aria-label="モデルの段階切り替え">
       <button id="prevModel" class="arrow" aria-label="前のモデル">←</button>
       <div class="model-heading">
-        <span id="stageLabel" class="stage">OBSERVATION / GEOCENTRIC</span>
+        <span id="stageLabel" class="stage">CARLSBERG / OBSERVED</span>
         <h2 id="modelName">読み込み中</h2>
       </div>
       <button id="nextModel" class="arrow" aria-label="次のモデル">→</button>
@@ -52,36 +52,34 @@
     <section class="grid orbit-compare-grid">
       <article class="card visual-card">
         <div class="section-head">
-          <div><span id="orbitKicker" class="kicker">OBSERVED MOTION</span><h3 id="orbitTitle">地球を固定した火星の動き</h3></div>
+          <div><span id="orbitKicker" class="kicker">ACTUAL ASTROMETRY</span><h3 id="orbitTitle">地球を固定した火星の実観測方向</h3></div>
         </div>
-        <canvas id="orbitCanvas" aria-label="火星の運動または選択中の惑星モデル"></canvas>
-        <p id="orbitNote" class="note">地球を中央に固定し、2020–2030年の基準データの地心座標に従って火星を表示します。日付スライダーを動かすと、火星の見かけの運動だけを追えます。</p>
+        <canvas id="orbitCanvas" aria-label="火星の実観測または選択中の惑星モデル"></canvas>
+        <p id="orbitNote" class="note">地球を中央に固定し、Carlsbergで実際に測定された火星の見かけ方向を表示します。</p>
       </article>
     </section>
 
-    <canvas id="referenceOrbitCanvas" hidden aria-hidden="true"></canvas>
-
     <section class="card date-control">
       <div class="date-control-head">
-        <span class="kicker">SAME DAY</span>
+        <span class="kicker">OBSERVATION</span>
         <strong id="dateLabel" class="mono"></strong>
       </div>
-      <input id="dateSlider" type="range" min="0" max="1" value="0" step="1" aria-label="日付">
+      <input id="dateSlider" type="range" min="0" max="1" value="0" step="1" aria-label="観測日時">
     </section>
 
     <section class="card readings">
       <div class="section-head"><div><span class="kicker">APPARENT POSITION</span><h3>地球から見た火星の方向</h3></div></div>
       <dl>
-        <div><dt id="predictedTerm">火星の地心黄経</dt><dd id="predictedLongitude">—</dd></div>
-        <div><dt id="referenceTerm">地心距離</dt><dd id="referenceLongitude">—</dd></div>
-        <div><dt id="errorTerm">表示座標</dt><dd id="angularError">—</dd></div>
+        <div><dt id="predictedTerm">観測地心黄経</dt><dd id="predictedLongitude">—</dd></div>
+        <div><dt id="referenceTerm">赤経 / 赤緯</dt><dd id="referenceLongitude">—</dd></div>
+        <div><dt id="errorTerm">観測資料</dt><dd id="angularError">—</dd></div>
       </dl>
-      <p class="note">角度はJ2000黄道面上の地心黄経。モデル表示では同じ日の基準値との誤差を比較します。</p>
+      <p class="note">Carlsbergの実観測は見かけの地心赤経・赤緯です。モデル比較用の黄経は座標変換だけで求めており、地球や火星の軌道理論から生成した値ではありません。</p>
     </section>
 
     <section class="card chart-card">
       <div class="section-head">
-        <div><span id="chartKicker" class="kicker">2020–2030</span><h3 id="chartTitle">火星の地心黄経：観測データ</h3></div>
+        <div><span id="chartKicker" class="kicker">CARLSBERG</span><h3 id="chartTitle">Carlsberg火星実観測：地心黄経</h3></div>
       </div>
       <canvas id="longitudeChart" aria-label="火星の地心黄経グラフ"></canvas>
     </section>
@@ -95,12 +93,12 @@
     <section class="card methodology">
       <span class="kicker">METHOD</span>
       <h3>このページで何を比較しているか</h3>
-      <p>「観測データ」では地球を原点に固定し、基準データの地心座標で火星だけを表示します。日付を動かすことで、順行・留・逆行をモデルを仮定せずに確認できます。</p>
-      <p>モデル表示では、赤で歴史モデルの火星位置、緑の円で現代基準位置を同じ座標系にそろえて重ねます。赤い実線と緑の破線の軌跡は、スライダーで選択した日までに辿った部分だけを表示します。コペルニクスとケプラーでは太陽中心座標、ティコでは地球固定座標へ基準値を変換します。プトレマイオスは物理的な距離尺度が現代軌道と同じではないため、地球からの方向だけを同一半径上で比較します。</p>
-      <p>プトレマイオスの「現代フィット」は、単純円 → 周転円 → 周転円＋離心円 → 周転円＋離心円＋エカントの順で2020–2030年の基準トラックへ各段階を最適化した教育用モデルです。「アルマゲスト史実値」は火星の離心円・周転円・エカントの比、元期位置、平均日運動を古代の値のまま使い、現代まで外挿します。</p>
-      <p>日付スライダーを動かすと表示が同じ日付で更新されます。モデルの定量評価は地心黄経のMAE・RMS・最大誤差で行います。</p>
+      <p>実観測モードでは地球を画面中央に固定し、Carlsberg Meridian Catalogの子午環観測で得られた火星の見かけ方向だけを一定半径上に描きます。距離は観測データに含まれないため表示には使いません。</p>
+      <p>緑の破線はCarlsberg実観測、赤い実線は選択中モデルの軌跡です。どちらもスライダー位置までに得られた部分だけを表示します。観測が大きく途切れた区間は、実際に連続観測したかのように見せないため破線を切ります。</p>
+      <p>プトレマイオスのCarlsbergフィットは、単純円 → 周転円 → 周転円＋離心円 → 周転円＋離心円＋エカントの順です。各段階をCarlsberg火星実観測の地心方向に合わせ、同じ観測点で角度誤差を評価します。</p>
+      <p>Carlsbergの元データは見かけの地心赤経・赤緯（equinox of date）です。画面ではこれを黄道座標へ回転して比較しています。この変換は座標系の変換であり、太陽中心の惑星軌道を前提にした基準暦ではありません。</p>
     </section>
   </main>
-  <script type="module" src="./js/app-v3.js"></script>
+  <script type="module" src="./js/app-v4.js"></script>
 </body>
 </html>
