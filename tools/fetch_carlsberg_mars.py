@@ -22,7 +22,7 @@ ENDPOINTS = [
 
 PARAMS = {
     "-source": "I/256/planet",
-    "-out": "MP Name TT flag RA DE",
+    "-out.all": "",
     "-out.max": "unlimited",
 }
 
@@ -60,12 +60,21 @@ def parse_asu_tsv(text: str) -> list[dict[str, str]]:
         if not line or line.startswith("#"):
             continue
         cells = [c.strip() for c in line.split("\t")]
-        if {"MP", "Name", "TT", "RA", "DE"}.issubset(set(cells)):
+        if {"TT", "RA", "DE"}.issubset(set(cells)) and ("MP" in cells or "Planet" in cells):
             header_index = i
             header = cells
+            print("VizieR columns:", header)
             break
 
     if header_index is None or header is None:
+        print("First non-comment VizieR lines:")
+        shown = 0
+        for line in lines:
+            if not line.startswith("#"):
+                print(repr(line))
+                shown += 1
+                if shown >= 20:
+                    break
         raise RuntimeError("could not locate VizieR TSV header")
 
     rows: list[dict[str, str]] = []
@@ -130,10 +139,14 @@ def jd_to_iso(jd: float) -> tuple[str, str]:
     return dt.strftime("%Y-%m-%d"), dt.strftime("%Y-%m-%dT%H:%M:%S")
 
 
+def object_code(row: dict[str, str]) -> str:
+    return (row.get("MP") or row.get("Planet") or "").strip()
+
+
 def is_mars(row: dict[str, str]) -> bool:
-    mp = row.get("MP", "").strip()
+    code = object_code(row)
     name = " ".join(row.get("Name", "").strip().lower().split())
-    return mp == MARS_CMC_CODE or name == "mars" or name.startswith("mars ")
+    return code == MARS_CMC_CODE or name == "mars" or name.startswith("mars ")
 
 
 def main() -> None:
@@ -141,10 +154,10 @@ def main() -> None:
     rows = parse_asu_tsv(raw)
     mars_rows = [r for r in rows if is_mars(r)]
     if not mars_rows:
-        codes = sorted({r.get("MP", "").strip() for r in rows if r.get("MP", "").strip()})
-        raise RuntimeError(f"no Mars rows found; sample MP codes={codes[-30:]}")
+        codes = sorted({object_code(r) for r in rows if object_code(r)})
+        raise RuntimeError(f"no Mars rows found; sample object codes={codes[-30:]}")
 
-    print("Mars identifiers:", sorted({(r.get("MP", "").strip(), r.get("Name", "").strip()) for r in mars_rows}))
+    print("Mars identifiers:", sorted({(object_code(r), r.get("Name", "").strip()) for r in mars_rows}))
 
     output: list[dict[str, str | float]] = []
     for row in mars_rows:
@@ -162,7 +175,7 @@ def main() -> None:
                 "dec_deg": f"{dec_deg:.10f}",
                 "ecliptic_lon_deg": f"{lon_deg:.10f}",
                 "quality_flag": row.get("flag", "").strip(),
-                "cmc_object_code": row.get("MP", "").strip(),
+                "cmc_object_code": object_code(row),
                 "source_catalog": "VizieR I/256/planet (CMC1-11)",
             }
         )
