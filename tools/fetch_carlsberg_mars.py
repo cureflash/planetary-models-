@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import csv
 import math
+import re
 import urllib.parse
 import urllib.request
 from datetime import datetime, timedelta, timezone
@@ -11,16 +12,24 @@ ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "data" / "mars_observations_carlsberg.csv"
 MIN_BASELINE_DAYS = 730.0
 
-# I/256 is the compound Carlsberg Meridian Catalogues 1-11 table.  Its
-# solar-system table contains the individual observations made on La Palma
-# between May 1984 and May 1998.  Query Mars server-side instead of downloading
-# the whole mixed planet/minor-planet table and guessing an historical object
-# code used by older volumes.
 VIZIER_ENDPOINTS = [
     "https://vizier.cds.unistra.fr/viz-bin/asu-tsv",
     "https://vizier.cfa.harvard.edu/viz-bin/asu-tsv",
     "https://vizier.idia.ac.za/viz-bin/asu-tsv",
 ]
+RAW_DIRS = [
+    "https://vizier.cfa.harvard.edu/ftp/cats/I/256/",
+    "https://cdsarc.cds.unistra.fr/ftp/cats/I/256/",
+]
+
+
+def fetch_url(url: str, timeout: int = 90) -> bytes:
+    request = urllib.request.Request(
+        url,
+        headers={"User-Agent": "planetary-models-educational-site/1.0"},
+    )
+    with urllib.request.urlopen(request, timeout=timeout) as response:
+        return response.read()
 
 
 def download_query(name_constraint: str) -> str:
@@ -35,15 +44,8 @@ def download_query(name_constraint: str) -> str:
     for endpoint in VIZIER_ENDPOINTS:
         url = f"{endpoint}?{query}"
         try:
-            request = urllib.request.Request(
-                url,
-                headers={"User-Agent": "planetary-models-educational-site/1.0"},
-            )
-            with urllib.request.urlopen(request, timeout=90) as response:
-                text = response.read().decode("utf-8", errors="replace")
-            if "I/256/planet" not in text and "Name" not in text:
-                raise RuntimeError("response does not look like I/256/planet")
-            print(f"downloaded I/256/planet Name={name_constraint!r} from {endpoint}")
+            text = fetch_url(url).decode("utf-8", errors="replace")
+            print(f"downloaded I/256/planet Name={name_constraint!r} from {endpoint}; {len(text)} bytes")
             return text
         except Exception as exc:
             print(f"failed {endpoint}: {exc}")
@@ -66,7 +68,8 @@ def parse_asu_tsv(text: str) -> list[dict[str, str]]:
             break
     if header_index is None or header is None:
         sample = [line for line in lines if line and not line.startswith("#")][:20]
-        raise RuntimeError("could not locate VizieR header; sample=" + repr(sample))
+        print("no data header; non-comment sample:", sample)
+        return []
 
     rows: list[dict[str, str]] = []
     for line in lines[header_index + 1 :]:
@@ -84,6 +87,19 @@ def parse_asu_tsv(text: str) -> list[dict[str, str]]:
             continue
         rows.append(row)
     return rows
+
+
+def probe_raw_directory() -> list[str]:
+    for base in RAW_DIRS:
+        try:
+            html = fetch_url(base, timeout=30).decode("utf-8", errors="replace")
+            hrefs = sorted(set(re.findall(r'href=["\']([^"\']+)["\']', html, flags=re.I)))
+            files = [h for h in hrefs if not h.startswith(("?", "/")) and h not in {"../"}]
+            print(f"I/256 directory listing from {base}: {files}")
+            return files
+        except Exception as exc:
+            print(f"failed to list {base}: {exc}")
+    return []
 
 
 def parse_hms(value: str) -> float:
@@ -113,7 +129,6 @@ def mean_obliquity_deg(jd: float) -> float:
 
 
 def equatorial_to_ecliptic_lon_deg(ra_deg: float, dec_deg: float, jd: float) -> float:
-    # Coordinate rotation only.  It introduces no heliocentric orbit model.
     ra = math.radians(ra_deg)
     dec = math.radians(dec_deg)
     eps = math.radians(mean_obliquity_deg(jd))
@@ -137,8 +152,6 @@ def is_mars_name(value: str) -> bool:
 
 
 def fetch_mars_rows() -> list[dict[str, str]]:
-    # Exact name is expected.  A wildcard retry makes this robust to a catalogue
-    # suffix such as "Mars ..." without admitting similarly named minor planets.
     for constraint in ("Mars", "Mars*"):
         rows = parse_asu_tsv(download_query(constraint))
         mars = [row for row in rows if is_mars_name(row.get("Name", ""))]
@@ -146,7 +159,8 @@ def fetch_mars_rows() -> list[dict[str, str]]:
             print("Mars names:", sorted({row.get("Name", "") for row in mars}))
             return mars
         print(f"Name={constraint!r}: {len(rows)} returned rows, none identified as Mars")
-    raise RuntimeError("VizieR I/256/planet returned no Mars observations")
+    files = probe_raw_directory()
+    raise RuntimeError("VizieR query returned no Mars observations; raw I/256 files=" + repr(files))
 
 
 def main() -> None:
@@ -173,7 +187,6 @@ def main() -> None:
             }
         )
 
-    # Remove exact duplicate epochs if the compound catalogue contains them.
     by_jd = {row["tt_jd"]: row for row in output}
     output = sorted(by_jd.values(), key=lambda row: float(row["tt_jd"]))
     if len(output) < 20:
