@@ -43,7 +43,7 @@ def fetch_table() -> str:
                 raise RuntimeError("VizieR response does not look like the requested table")
             print(f"downloaded I/256/planet from {endpoint}")
             return text
-        except Exception as exc:  # try the next mirror
+        except Exception as exc:
             last_error = exc
             print(f"failed {endpoint}: {exc}")
     raise RuntimeError(f"all VizieR mirrors failed: {last_error}")
@@ -73,7 +73,6 @@ def parse_asu_tsv(text: str) -> list[dict[str, str]]:
         cells = [c.strip() for c in line.split("\t")]
         if len(cells) != len(header):
             continue
-        # VizieR inserts a units row and a dashed separator after the header.
         if cells[0].startswith("-") or cells[0] in {"---", ""}:
             continue
         row = dict(zip(header, cells))
@@ -91,8 +90,6 @@ def parse_hms(value: str) -> float:
         h, m, s = map(float, parts[:3])
         return (h + m / 60.0 + s / 3600.0) * 15.0
     x = float(value)
-    # VizieR normally returns sexagesimal RA here. If a mirror returns decimal,
-    # treat values <=24 as hours and larger values as degrees.
     return x * 15.0 if abs(x) <= 24.0 else x
 
 
@@ -108,7 +105,6 @@ def parse_dms(value: str) -> float:
 
 
 def mean_obliquity_deg(jd: float) -> float:
-    # IAU-style polynomial adequate for the 1984-1998 interval.
     t = (jd - 2451545.0) / 36525.0
     seconds = 84381.448 - 46.8150 * t - 0.00059 * t * t + 0.001813 * t * t * t
     return seconds / 3600.0
@@ -122,29 +118,36 @@ def equatorial_to_ecliptic_lon_deg(ra_deg: float, dec_deg: float, jd: float) -> 
     x = math.cos(dec) * math.cos(ra)
     y_eq = math.cos(dec) * math.sin(ra)
     z_eq = math.sin(dec)
-
-    # Inverse rotation from equatorial-of-date to ecliptic-of-date.
     y = y_eq * math.cos(eps) + z_eq * math.sin(eps)
-    lon = math.degrees(math.atan2(y, x)) % 360.0
-    return lon
+    return math.degrees(math.atan2(y, x)) % 360.0
 
 
 def jd_to_iso(jd: float) -> tuple[str, str]:
-    # TT is used as a timestamp here. The UTC-TT offset is only about a minute
-    # in this era and is irrelevant to the displayed date / planetary track.
     dt = datetime(1970, 1, 1, tzinfo=timezone.utc) + timedelta(
         seconds=(jd - 2440587.5) * 86400.0
     )
     return dt.strftime("%Y-%m-%d"), dt.strftime("%Y-%m-%dT%H:%M:%S")
 
 
+def is_mars_name(name: str) -> bool:
+    normalized = " ".join(name.strip().lower().split())
+    # CMC/VizieR may retain a suffix in an object designation.  We want Mars
+    # itself and any catalogue spelling beginning with the planet name.
+    return normalized == "mars" or normalized.startswith("mars ")
+
+
 def main() -> None:
     raw = fetch_table()
     rows = parse_asu_tsv(raw)
-    mars_rows = [r for r in rows if r.get("Name", "").strip().lower() == "mars"]
+    mars_rows = [r for r in rows if is_mars_name(r.get("Name", ""))]
     if not mars_rows:
-        names = sorted({r.get("Name", "") for r in rows})[:50]
-        raise RuntimeError(f"no Mars rows found; sample names={names}")
+        names = sorted({r.get("Name", "").strip() for r in rows})
+        m_names = [n for n in names if n.lower().startswith("m")]
+        raise RuntimeError(
+            "no Mars rows found; object names beginning with M=" + repr(m_names[:100])
+        )
+
+    print("Mars catalogue names:", sorted({r.get("Name", "").strip() for r in mars_rows}))
 
     output: list[dict[str, str | float]] = []
     for row in mars_rows:
