@@ -12,7 +12,7 @@
     <header class="hero">
       <p class="eyebrow">PLANETARY MODELS / MARS</p>
       <h1>Planetary Models</h1>
-      <p class="lead">火星の見かけの運動を、プトレマイオス、ティコ、コペルニクス、ケプラーのモデルで現代基準軌道と比較する。</p>
+      <p class="lead">火星の見かけの運動を、プトレマイオス、ティコ、コペルニクス、ケプラーのモデルで現代基準と比較する。</p>
     </header>
 
     <nav class="theory-tabs" aria-label="天文学モデル">
@@ -51,20 +51,14 @@
     <section class="grid orbit-compare-grid">
       <article class="card visual-card">
         <div class="section-head">
-          <div><span class="kicker">MODEL + REFERENCE</span><h3>歴史モデルと同一座標系の基準火星</h3></div>
+          <div><span class="kicker">MODEL + REFERENCE</span><h3>モデルと現代基準の火星</h3></div>
         </div>
         <canvas id="orbitCanvas" aria-label="選択中の惑星モデルと同一座標系に変換した基準火星"></canvas>
         <p class="note">赤い MARS がモデル予測、緑の REF MARS が現代基準です。プトレマイオスでは物理的距離を比較できないため、同じ半径上で方向だけを比較します。</p>
       </article>
-
-      <article class="card visual-card reference-card">
-        <div class="section-head">
-          <div><span class="kicker">MODERN REFERENCE</span><h3>現代基準の地球・火星軌道</h3></div>
-        </div>
-        <canvas id="referenceOrbitCanvas" aria-label="JPL由来の地球と火星の太陽中心軌道"></canvas>
-        <p class="note">JPLの1800–2050年用近似式から計算した太陽中心座標。地球は正確にはEarth–Moon barycenterです。左図と中心が違う体系では、位置をそのまま横比較せず緑のREFマーカーを使います。</p>
-      </article>
     </section>
+
+    <canvas id="referenceOrbitCanvas" hidden aria-hidden="true"></canvas>
 
     <section class="card date-control">
       <div class="date-control-head">
@@ -81,7 +75,7 @@
         <div><dt>現代基準値</dt><dd id="referenceLongitude">—</dd></div>
         <div><dt>角度誤差</dt><dd id="angularError">—</dd></div>
       </dl>
-      <p class="note">角度はJ2000黄道面上の地心黄経。軌道図だけでなく、同じ日の見かけ方向と全期間誤差も比較します。</p>
+      <p class="note">角度はJ2000黄道面上の地心黄経。軌道図と同じ日の見かけ方向、全期間誤差を比較します。</p>
     </section>
 
     <section class="card chart-card">
@@ -100,9 +94,9 @@
     <section class="card methodology">
       <span class="kicker">METHOD</span>
       <h3>このページで何を比較しているか</h3>
-      <p>左図では、モデルと基準データを同じ座標系にそろえて比較します。コペルニクスとケプラーでは太陽中心座標、ティコでは地球固定座標へ基準値を変換します。プトレマイオスは物理的な距離尺度が現代軌道と同じではないため、観測可能な地球からの方向だけを同一半径上で比較します。</p>
+      <p>軌道図では、赤で歴史モデルの天体位置、緑の円で現代基準位置を同じ座標系にそろえて重ねます。コペルニクスとケプラーでは太陽中心座標、ティコでは地球固定座標へ基準値を変換します。プトレマイオスは物理的な距離尺度が現代軌道と同じではないため、地球からの方向だけを同一半径上で比較します。</p>
       <p>プトレマイオスの「現代フィット」は2020–2030年の基準トラックへ各段階を最適化した教育用モデルです。「アルマゲスト史実値」は火星の離心円・周転円・エカントの比、元期位置、平均日運動を古代の値のまま使い、現代まで外挿します。</p>
-      <p>右図はJPL Solar System Dynamicsの近似式から計算した現代基準の太陽中心軌道です。日付スライダーを動かすと、両図とも同じ日付になります。定量評価は地心黄経のMAE・RMS・最大誤差で行います。</p>
+      <p>日付スライダーを動かすとモデルと現代基準が同じ日付で更新されます。定量評価は地心黄経のMAE・RMS・最大誤差で行います。</p>
     </section>
   </main>
   <script type="module" src="./js/app-v2.js"></script>
