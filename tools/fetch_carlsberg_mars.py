@@ -9,9 +9,11 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "data" / "mars_observations_carlsberg_1984_1998.csv"
+MARS_CMC_CODE = "99040"
 
 # VizieR catalogue I/256, table planet:
 # Carlsberg Meridian Catalogues 1-11, observations from La Palma, 1984-1998.
+# In the historical CMC planet tables, Mars is identified by code 99040.
 ENDPOINTS = [
     "https://vizier.cds.unistra.fr/viz-bin/asu-tsv",
     "https://vizier.cfa.harvard.edu/viz-bin/asu-tsv",
@@ -20,7 +22,7 @@ ENDPOINTS = [
 
 PARAMS = {
     "-source": "I/256/planet",
-    "-out": "Name TT flag RA DE",
+    "-out": "MP Name TT flag RA DE",
     "-out.max": "unlimited",
 }
 
@@ -58,7 +60,7 @@ def parse_asu_tsv(text: str) -> list[dict[str, str]]:
         if not line or line.startswith("#"):
             continue
         cells = [c.strip() for c in line.split("\t")]
-        if {"Name", "TT", "RA", "DE"}.issubset(set(cells)):
+        if {"MP", "Name", "TT", "RA", "DE"}.issubset(set(cells)):
             header_index = i
             header = cells
             break
@@ -73,7 +75,7 @@ def parse_asu_tsv(text: str) -> list[dict[str, str]]:
         cells = [c.strip() for c in line.split("\t")]
         if len(cells) != len(header):
             continue
-        if cells[0].startswith("-") or cells[0] in {"---", ""}:
+        if all(c.startswith("-") or not c for c in cells):
             continue
         row = dict(zip(header, cells))
         try:
@@ -114,7 +116,6 @@ def equatorial_to_ecliptic_lon_deg(ra_deg: float, dec_deg: float, jd: float) -> 
     ra = math.radians(ra_deg)
     dec = math.radians(dec_deg)
     eps = math.radians(mean_obliquity_deg(jd))
-
     x = math.cos(dec) * math.cos(ra)
     y_eq = math.cos(dec) * math.sin(ra)
     z_eq = math.sin(dec)
@@ -129,25 +130,21 @@ def jd_to_iso(jd: float) -> tuple[str, str]:
     return dt.strftime("%Y-%m-%d"), dt.strftime("%Y-%m-%dT%H:%M:%S")
 
 
-def is_mars_name(name: str) -> bool:
-    normalized = " ".join(name.strip().lower().split())
-    # CMC/VizieR may retain a suffix in an object designation.  We want Mars
-    # itself and any catalogue spelling beginning with the planet name.
-    return normalized == "mars" or normalized.startswith("mars ")
+def is_mars(row: dict[str, str]) -> bool:
+    mp = row.get("MP", "").strip()
+    name = " ".join(row.get("Name", "").strip().lower().split())
+    return mp == MARS_CMC_CODE or name == "mars" or name.startswith("mars ")
 
 
 def main() -> None:
     raw = fetch_table()
     rows = parse_asu_tsv(raw)
-    mars_rows = [r for r in rows if is_mars_name(r.get("Name", ""))]
+    mars_rows = [r for r in rows if is_mars(r)]
     if not mars_rows:
-        names = sorted({r.get("Name", "").strip() for r in rows})
-        m_names = [n for n in names if n.lower().startswith("m")]
-        raise RuntimeError(
-            "no Mars rows found; object names beginning with M=" + repr(m_names[:100])
-        )
+        codes = sorted({r.get("MP", "").strip() for r in rows if r.get("MP", "").strip()})
+        raise RuntimeError(f"no Mars rows found; sample MP codes={codes[-30:]}")
 
-    print("Mars catalogue names:", sorted({r.get("Name", "").strip() for r in mars_rows}))
+    print("Mars identifiers:", sorted({(r.get("MP", "").strip(), r.get("Name", "").strip()) for r in mars_rows}))
 
     output: list[dict[str, str | float]] = []
     for row in mars_rows:
@@ -165,6 +162,7 @@ def main() -> None:
                 "dec_deg": f"{dec_deg:.10f}",
                 "ecliptic_lon_deg": f"{lon_deg:.10f}",
                 "quality_flag": row.get("flag", "").strip(),
+                "cmc_object_code": row.get("MP", "").strip(),
                 "source_catalog": "VizieR I/256/planet (CMC1-11)",
             }
         )
