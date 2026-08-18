@@ -1,10 +1,11 @@
-name: Generate Tokyo PMC88 Mars observations
+name: Generate planetary Mars observations
 
 on:
   push:
     branches: [main]
     paths:
       - "tools/fetch_tokyo_pmc88_mars.py"
+      - "tools/inspect_carlsberg_i256.py"
       - "tools/fit_ptolemy_models.py"
       - "js/app-v4.js"
       - "js/observation-frames.js"
@@ -15,6 +16,7 @@ on:
     branches: [main]
     paths:
       - "tools/fetch_tokyo_pmc88_mars.py"
+      - "tools/inspect_carlsberg_i256.py"
       - "tools/fit_ptolemy_models.py"
       - "js/app-v4.js"
       - "js/observation-frames.js"
@@ -38,6 +40,9 @@ jobs:
         with:
           python-version: "3.x"
 
+      - name: Inspect Carlsberg I/256 TAP tables
+        run: python tools/inspect_carlsberg_i256.py
+
       - name: Install fitting dependencies
         run: python -m pip install --disable-pip-version-check numpy scipy
 
@@ -60,7 +65,7 @@ jobs:
       - name: Upload generated data for validation
         uses: actions/upload-artifact@v4
         with:
-          name: tokyo-pmc88-mars-generated
+          name: planetary-mars-generated
           path: |
             data/mars_observations_tokyo_pmc88.csv
             data/mars_observations_carlsberg.csv
@@ -71,11 +76,11 @@ jobs:
         run: |
           FILES="data/mars_observations_tokyo_pmc88.csv data/mars_observations_carlsberg.csv data/ptolemy_mars_fitted_parameters.json models/ptolemy/fitted-parameters.js"
           if [ -z "$(git status --porcelain -- $FILES)" ]; then
-            echo "Tokyo PMC88 data and fitted parameters already up to date."
+            echo "Generated data and fitted parameters already up to date."
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add $FILES
-          git commit -m "Update Tokyo PMC88 Mars observations and fits"
+          git commit -m "Update Mars observations and fits"
           git push
