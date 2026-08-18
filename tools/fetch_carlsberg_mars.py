@@ -3,8 +3,6 @@ from __future__ import annotations
 import csv
 import gzip
 import math
-import re
-import urllib.parse
 import urllib.request
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -13,13 +11,13 @@ ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "data" / "mars_observations_carlsberg.csv"
 MIN_BASELINE_DAYS = 730.0
 
-VIZIER_ENDPOINTS = [
-    "https://vizier.cds.unistra.fr/viz-bin/asu-tsv",
-    "https://vizier.cfa.harvard.edu/viz-bin/asu-tsv",
-    "https://vizier.idia.ac.za/viz-bin/asu-tsv",
+# Carlsberg Meridian Catalogues 1-11 composite catalogue, solar-system table.
+# The raw table is preferable to VizieR's form query here because the latter
+# returns an empty result for Name=Mars even though planet.dat contains the rows.
+RAW_URLS = [
+    "https://vizier.cfa.harvard.edu/ftp/cats/I/256/planet.dat.gz",
+    "https://cdsarc.cds.unistra.fr/ftp/cats/I/256/planet.dat.gz",
 ]
-RAW_BASE = "https://vizier.cfa.harvard.edu/ftp/cats/I/256/"
-RAW_DIRS = [RAW_BASE, "https://cdsarc.cds.unistra.fr/ftp/cats/I/256/"]
 
 
 def fetch_url(url: str, timeout: int = 90) -> bytes:
@@ -31,114 +29,62 @@ def fetch_url(url: str, timeout: int = 90) -> bytes:
         return response.read()
 
 
-def download_query(name_constraint: str) -> str:
-    params = {
-        "-source": "I/256/planet",
-        "-out": "CMC MP Name TT flag RA DE",
-        "-out.max": "unlimited",
-        "Name": name_constraint,
-    }
-    query = urllib.parse.urlencode(params)
+def download_planet_table() -> str:
     last_error: Exception | None = None
-    for endpoint in VIZIER_ENDPOINTS:
-        url = f"{endpoint}?{query}"
+    for url in RAW_URLS:
         try:
-            text = fetch_url(url).decode("utf-8", errors="replace")
-            print(f"downloaded I/256/planet Name={name_constraint!r} from {endpoint}; {len(text)} bytes")
+            payload = fetch_url(url)
+            text = gzip.decompress(payload).decode("ascii", errors="replace")
+            rows = text.splitlines()
+            if len(rows) < 25000:
+                raise RuntimeError(f"unexpectedly short planet.dat: {len(rows)} rows")
+            print(f"downloaded I/256 planet.dat from {url}: {len(rows)} rows")
             return text
         except Exception as exc:
-            print(f"failed {endpoint}: {exc}")
+            print(f"failed {url}: {exc}")
             last_error = exc
-    raise RuntimeError(f"all VizieR mirrors failed: {last_error}")
+    raise RuntimeError(f"all I/256 planet.dat mirrors failed: {last_error}")
 
 
-def parse_asu_tsv(text: str) -> list[dict[str, str]]:
-    lines = text.splitlines()
-    header_index: int | None = None
-    header: list[str] | None = None
-    for i, line in enumerate(lines):
-        if not line or line.startswith("#"):
-            continue
-        cells = [cell.strip() for cell in line.split("\t")]
-        if {"Name", "TT", "RA", "DE"}.issubset(set(cells)):
-            header_index = i
-            header = cells
-            print("VizieR columns:", header)
-            break
-    if header_index is None or header is None:
-        sample = [line for line in lines if line and not line.startswith("#")][:20]
-        print("no data header; non-comment sample:", sample)
-        return []
+def parse_planet_line(line: str) -> dict[str, str | float] | None:
+    # Byte positions are from the CDS/VizieR I/256 ReadMe (1-based there):
+    # 2-8 CMC, 13-16 MP, 19-30 Name, 33-46 TT, 47 flag,
+    # 51-52 RAh, 54-55 RAm, 57-62 RAs, 65 sign,
+    # 66-67 DEd, 69-70 DEm, 72-76 DEs, 79-83 Vmag.
+    if len(line) < 76:
+        return None
+    try:
+        cmc = line[1:8].strip()
+        mp = line[12:16].strip()
+        name = line[18:30].strip()
+        tt = float(line[32:46])
+        flag = line[46:47].strip()
+        rah = int(line[50:52])
+        ram = int(line[53:55])
+        ras = float(line[56:62])
+        sign = -1.0 if line[64:65] == "-" else 1.0
+        ded = int(line[65:67])
+        dem = int(line[68:70])
+        des = float(line[71:76])
+    except ValueError:
+        return None
 
-    rows: list[dict[str, str]] = []
-    for line in lines[header_index + 1 :]:
-        if not line or line.startswith("#"):
-            continue
-        cells = [cell.strip() for cell in line.split("\t")]
-        if len(cells) != len(header):
-            continue
-        if all((not cell) or set(cell) <= {"-"} for cell in cells):
-            continue
-        row = dict(zip(header, cells))
-        try:
-            float(row["TT"])
-        except (ValueError, TypeError):
-            continue
-        rows.append(row)
-    return rows
+    if not (0 <= rah <= 23 and 0 <= ram <= 59 and 0 <= ras < 60):
+        return None
+    if not (0 <= ded <= 90 and 0 <= dem <= 59 and 0 <= des < 60):
+        return None
 
-
-def probe_raw_directory() -> list[str]:
-    for base in RAW_DIRS:
-        try:
-            html = fetch_url(base, timeout=30).decode("utf-8", errors="replace")
-            hrefs = sorted(set(re.findall(r'href=["\']([^"\']+)["\']', html, flags=re.I)))
-            files = [h for h in hrefs if not h.startswith(("?", "/")) and h not in {"../"}]
-            print(f"I/256 directory listing from {base}: {files}")
-            return files
-        except Exception as exc:
-            print(f"failed to list {base}: {exc}")
-    return []
-
-
-def probe_raw_planet() -> None:
-    readme = fetch_url(RAW_BASE + "ReadMe", timeout=30).decode("latin-1", errors="replace")
-    lines = readme.splitlines()
-    hits = [i for i, line in enumerate(lines) if "planet.dat" in line]
-    for i in hits[:3]:
-        lo = max(0, i - 5)
-        hi = min(len(lines), i + 45)
-        print("--- I/256 ReadMe around planet.dat ---")
-        for line in lines[lo:hi]:
-            print(line)
-
-    payload = fetch_url(RAW_BASE + "planet.dat.gz", timeout=60)
-    text = gzip.decompress(payload).decode("latin-1", errors="replace")
-    raw_lines = text.splitlines()
-    print(f"planet.dat rows={len(raw_lines)}")
-    print("--- planet.dat first 20 rows ---")
-    for line in raw_lines[:20]:
-        print(repr(line))
-
-
-def parse_hms(value: str) -> float:
-    parts = value.replace(":", " ").split()
-    if len(parts) >= 3:
-        h, m, s = map(float, parts[:3])
-        return 15.0 * (h + m / 60.0 + s / 3600.0)
-    x = float(value)
-    return x * 15.0 if abs(x) <= 24.0 else x
-
-
-def parse_dms(value: str) -> float:
-    parts = value.replace(":", " ").split()
-    if len(parts) >= 3:
-        sign = -1.0 if parts[0].startswith("-") else 1.0
-        d = abs(float(parts[0]))
-        m = float(parts[1])
-        s = float(parts[2])
-        return sign * (d + m / 60.0 + s / 3600.0)
-    return float(value)
+    ra_deg = 15.0 * (rah + ram / 60.0 + ras / 3600.0)
+    dec_deg = sign * (ded + dem / 60.0 + des / 3600.0)
+    return {
+        "cmc": cmc,
+        "mp": mp,
+        "name": name,
+        "tt": tt,
+        "flag": flag,
+        "ra_deg": ra_deg,
+        "dec_deg": dec_deg,
+    }
 
 
 def mean_obliquity_deg(jd: float) -> float:
@@ -148,6 +94,7 @@ def mean_obliquity_deg(jd: float) -> float:
 
 
 def equatorial_to_ecliptic_lon_deg(ra_deg: float, dec_deg: float, jd: float) -> float:
+    # Coordinate rotation only. No heliocentric orbit model is introduced.
     ra = math.radians(ra_deg)
     dec = math.radians(dec_deg)
     eps = math.radians(mean_obliquity_deg(jd))
@@ -165,54 +112,51 @@ def jd_to_iso(jd: float) -> tuple[str, str]:
     return dt.strftime("%Y-%m-%d"), dt.strftime("%Y-%m-%dT%H:%M:%S")
 
 
-def is_mars_name(value: str) -> bool:
-    normalized = " ".join(value.strip().casefold().split())
-    return normalized == "mars" or normalized.startswith("mars ")
-
-
-def fetch_mars_rows() -> list[dict[str, str]]:
-    for constraint in ("Mars", "Mars*"):
-        rows = parse_asu_tsv(download_query(constraint))
-        mars = [row for row in rows if is_mars_name(row.get("Name", ""))]
-        if mars:
-            print("Mars names:", sorted({row.get("Name", "") for row in mars}))
-            return mars
-        print(f"Name={constraint!r}: {len(rows)} returned rows, none identified as Mars")
-    files = probe_raw_directory()
-    probe_raw_planet()
-    raise RuntimeError("VizieR query returned no Mars observations; raw I/256 files=" + repr(files))
-
-
 def main() -> None:
-    mars_rows = fetch_mars_rows()
-    output: list[dict[str, str]] = []
+    raw = download_planet_table()
+    parsed = [p for line in raw.splitlines() if (p := parse_planet_line(line)) is not None]
+    mars = [p for p in parsed if str(p["name"]).strip().casefold() == "mars"]
 
-    for row in mars_rows:
-        jd = float(row["TT"])
-        ra_deg = parse_hms(row["RA"])
-        dec_deg = parse_dms(row["DE"])
+    if not mars:
+        names = sorted({str(p["name"]).strip() for p in parsed if str(p["name"]).strip()})
+        raise RuntimeError(f"no Mars observations found; sample names={names[:80]}")
+
+    mars.sort(key=lambda row: float(row["tt"]))
+    print(f"raw Mars rows: {len(mars)}")
+    print("Mars CMC object codes:", sorted({str(row["cmc"]) for row in mars}))
+
+    output: list[dict[str, str]] = []
+    for row in mars:
+        jd = float(row["tt"])
+        ra_deg = float(row["ra_deg"])
+        dec_deg = float(row["dec_deg"])
         lon_deg = equatorial_to_ecliptic_lon_deg(ra_deg, dec_deg, jd)
         date, timestamp = jd_to_iso(jd)
         output.append(
             {
                 "date": date,
-                "timestamp_tt": timestamp,
-                "tt_jd": f"{jd:.8f}",
+                # Keep the pre-existing column names so the browser and fitter
+                # remain backward compatible. TT/TDT differ only by terminology
+                # for the purposes of this historical catalogue epoch field.
+                "timestamp_tdt": timestamp,
+                "tdt_jd": f"{jd:.6f}",
                 "ra_deg": f"{ra_deg:.10f}",
                 "dec_deg": f"{dec_deg:.10f}",
                 "ecliptic_lon_deg": f"{lon_deg:.10f}",
-                "quality_flag": row.get("flag", "").strip(),
-                "cmc_number": row.get("CMC", "").strip(),
-                "source_catalog": "VizieR I/256/planet (Carlsberg Meridian Catalogues 1-11)",
+                "quality_flag": str(row["flag"]),
+                "cmc_object_code": str(row["cmc"]),
+                "source_volume": "CMC1-11",
+                "source_catalog": "I/256 planet.dat",
             }
         )
 
-    by_jd = {row["tt_jd"]: row for row in output}
-    output = sorted(by_jd.values(), key=lambda row: float(row["tt_jd"]))
-    if len(output) < 20:
-        raise RuntimeError(f"too few Mars observations: {len(output)}")
+    # A repeated epoch would add no independent information; keep one row.
+    by_jd = {row["tdt_jd"]: row for row in output}
+    output = sorted(by_jd.values(), key=lambda row: float(row["tdt_jd"]))
 
-    baseline = float(output[-1]["tt_jd"]) - float(output[0]["tt_jd"])
+    if len(output) < 20:
+        raise RuntimeError(f"too few Mars observations after deduplication: {len(output)}")
+    baseline = float(output[-1]["tdt_jd"]) - float(output[0]["tdt_jd"])
     if baseline < MIN_BASELINE_DAYS:
         raise RuntimeError(
             f"Carlsberg Mars baseline is only {baseline:.1f} days; at least {MIN_BASELINE_DAYS:.0f} required"
@@ -226,7 +170,10 @@ def main() -> None:
 
     good = sum(1 for row in output if row["quality_flag"] != "*")
     print(f"wrote {len(output)} Mars observations ({good} unflagged) to {OUT}")
-    print(f"range: {output[0]['timestamp_tt']} .. {output[-1]['timestamp_tt']} ({baseline:.1f} days)")
+    print(
+        f"range: {output[0]['timestamp_tdt']} .. {output[-1]['timestamp_tdt']} "
+        f"({baseline:.1f} days / {baseline / 365.25:.2f} years)"
+    )
 
 
 if __name__ == "__main__":
