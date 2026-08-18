@@ -1,12 +1,14 @@
-// Auto-generated from Carlsberg CMC4 Mars observations by tools/fit_ptolemy_models.py.
+// Auto-generated from Carlsberg Mars observations by tools/fit_ptolemy_models.py.
 export const PTOLEMY_FIT = {
   "source": {
-    "catalog": "CDS I/147 table2.dat",
-    "name": "Carlsberg Meridian Catalog Vol. 4 (CMC4)",
+    "catalog": "Carlsberg Meridian Catalog individual planet-observation tables",
+    "volumes": [
+      "CMC4"
+    ],
     "target": "Mars (CMC code 99040)",
     "observations_total": 135,
     "observations_used": 135,
-    "filter": "exclude meFlag='*' (high internal mean error)",
+    "filter": "exclude quality_flag='*' (high internal mean error)",
     "coordinate": "apparent geocentric RA/Dec of date, converted to ecliptic longitude for model comparison"
   },
   "constants": {
