@@ -1,20 +1,30 @@
-name: Inspect real Mars observation coverage
+name: Generate USNO W2J00 Mars observations
 
 on:
   push:
     branches: [main]
     paths:
-      - "tools/inspect_jpl_meridian_mars.py"
+      - "tools/fetch_usno_w2j00_mars.py"
+      - "tools/fit_ptolemy_models.py"
+      - "js/app-v4.js"
+      - "js/observation-frames.js"
+      - "models/ptolemy/**"
+      - "index.html"
       - ".github/workflows/generate-reference.yml"
   pull_request:
     branches: [main]
     paths:
-      - "tools/inspect_jpl_meridian_mars.py"
+      - "tools/fetch_usno_w2j00_mars.py"
+      - "tools/fit_ptolemy_models.py"
+      - "js/app-v4.js"
+      - "js/observation-frames.js"
+      - "models/ptolemy/**"
+      - "index.html"
       - ".github/workflows/generate-reference.yml"
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   generate:
@@ -23,8 +33,49 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event_name == 'pull_request' && github.head_ref || github.ref_name }}
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.x"
-      - name: Measure JPL meridian-circle Mars coverage
-        run: python tools/inspect_jpl_meridian_mars.py
+
+      - name: Install fitting dependencies
+        run: python -m pip install --disable-pip-version-check numpy scipy
+
+      - name: Download USNO W2J00 Mars observations
+        run: python tools/fetch_usno_w2j00_mars.py
+
+      - name: Fit Ptolemy stages to W2J00 observations
+        run: python tools/fit_ptolemy_models.py
+
+      - name: Check browser JavaScript syntax
+        run: |
+          node --check js/app-v4.js
+          node --check js/observation-frames.js
+          node --check models/ptolemy/01-simple-circle.js
+          node --check models/ptolemy/02-epicycle.js
+          node --check models/ptolemy/03-epicycle-eccentric.js
+          node --check models/ptolemy/04-equant.js
+          node --check models/ptolemy/fitted-parameters.js
+
+      - name: Upload generated data for validation
+        uses: actions/upload-artifact@v4
+        with:
+          name: usno-w2j00-mars-generated
+          path: |
+            data/mars_observations_usno_w2j00.csv
+            data/mars_observations_carlsberg.csv
+            data/ptolemy_mars_fitted_parameters.json
+            models/ptolemy/fitted-parameters.js
+
+      - name: Commit generated observation data and fits
+        run: |
+          FILES="data/mars_observations_usno_w2j00.csv data/mars_observations_carlsberg.csv data/ptolemy_mars_fitted_parameters.json models/ptolemy/fitted-parameters.js"
+          if [ -z "$(git status --porcelain -- $FILES)" ]; then
+            echo "W2J00 data and fitted parameters already up to date."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add $FILES
+          git commit -m "Update USNO W2J00 Mars observations and fits"
+          git push
