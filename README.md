@@ -1,8 +1,10 @@
 # Planetary Models
 
-A static educational website for comparing historical planetary models against a shared Mars reference dataset.
+火星の見かけの運動を、歴史上の惑星モデルと現代の基準データで比較する教育用Webサイトです。
 
-## Repository layout
+現在はプトレマイオス型モデルを実装しています。将来、ティコ・ブラーエ、コペルニクス、ケプラーのモデルを同じサイトへ追加できるよう、モデル群を分離しています。
+
+## 構成
 
 ```text
 planetary-models/
@@ -13,7 +15,7 @@ planetary-models/
 │  └─ app.js
 ├─ data/
 │  ├─ mars_reference_2020_2030.csv
-│  └─ fitted_model_parameters.json
+│  └─ ptolemy_mars_fitted_parameters.json
 ├─ models/
 │  ├─ ptolemy/
 │  │  ├─ 01-simple-circle.js
@@ -25,43 +27,45 @@ planetary-models/
 │  └─ kepler/
 └─ tools/
    ├─ generate_reference.py
-   └─ fit_models.py
+   └─ fit_ptolemy_models.py
 ```
 
-The four Ptolemaic stages are independent JavaScript programs. `js/app.js` does not turn individual Ptolemaic features on and off; it loads a different model program when the left/right control is used.
+## プトレマイオス型モデル
 
-## Implemented now
+4段階は機能フラグで切り替える1本のプログラムではなく、それぞれ独立したJavaScriptです。
 
-Ptolemy / Mars:
+1. `models/ptolemy/01-simple-circle.js` — 地球中心の一様円運動
+2. `models/ptolemy/02-eccentric.js` — 離心円
+3. `models/ptolemy/03-epicycle.js` — 離心円＋周転円
+4. `models/ptolemy/04-equant.js` — 離心円＋周転円＋エカント
 
-1. Earth-centered uniform circle
-2. Eccentric deferent
-3. Eccentric deferent + epicycle
-4. Eccentric deferent + epicycle + equant
+`js/app.js` は共通UIと可視化だけを担当し、左右ボタンで読み込むモデルファイル自体を変更します。
 
-Tycho, Copernicus, and Kepler have dedicated directories reserved so they can be added without mixing their calculations with the Ptolemaic programs.
+## 火星基準データ
 
-## Mars reference data
+`data/mars_reference_2020_2030.csv` は2020-01-01から2030-01-01までの日次データです。
 
-`data/mars_reference_2020_2030.csv` contains daily positions from 2020-01-01 through 2030-01-01. It is generated from JPL Solar System Dynamics' approximate planetary-position formulae for 1800-2050.
+JPL Solar System Dynamics の「Approximate Positions of the Planets」に掲載されている1800–2050年用の軌道要素と計算法から生成しています。
 
 Source: https://ssd.jpl.nasa.gov/planets/approx_pos.html
 
-JPL recommends Horizons for high-precision ephemerides. The static dataset here is intended to keep the educational site reproducible and usable on GitHub Pages without an external API.
+JPLは高精度用途にはHorizonsを推奨しています。このCSVは生の望遠鏡観測値でもHorizonsの高精度出力でもなく、静的サイト上で再現可能な教育用基準トラックです。
 
-## Run locally
+## 現在の全期間誤差
+
+| Stage | MAE | RMS | Max |
+|---|---:|---:|---:|
+| 単純円 | 28.32° | 31.56° | 53.79° |
+| 離心円 | 22.95° | 25.88° | 45.35° |
+| 周転円 | 1.56° | 2.15° | 6.97° |
+| エカント | 0.24° | 0.30° | 0.93° |
+
+数値定数は2020–2030年の基準トラックに各幾何モデルをフィットした値です。『アルマゲスト』の原表をそのまま転記したものではありません。
+
+## ローカル実行
+
+ES ModulesとCSVの`fetch`を使うため、`index.html`を直接開くのではなくHTTPサーバーで配信します。
 
 ```bash
 python -m http.server 8000
 ```
-
-Then open `http://localhost:8000/`.
-
-## Rebuild the data
-
-```bash
-python tools/generate_reference.py
-python tools/fit_models.py
-```
-
-`fit_models.py` requires NumPy and SciPy. The website itself has no Python runtime dependency.
