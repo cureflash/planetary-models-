@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import csv
-import io
 import math
 import urllib.parse
 import urllib.request
