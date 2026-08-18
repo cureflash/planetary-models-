@@ -12,11 +12,11 @@
     <header class="hero">
       <p class="eyebrow">PLANETARY MODELS / MARS</p>
       <h1>Planetary Models</h1>
-      <p class="lead">Carlsberg Meridian Catalogの火星実観測と、プトレマイオス、ティコ、コペルニクス、ケプラーのモデルを比較する。</p>
+      <p class="lead">Tokyo Photoelectric Meridian Circle Catalog 1988の火星実観測と、プトレマイオス、ティコ、コペルニクス、ケプラーのモデルを比較する。</p>
     </header>
 
     <nav class="theory-tabs" aria-label="天文学モデル">
-      <button class="theory-tab active" data-theory="observation" aria-current="page">Carlsberg実観測</button>
+      <button class="theory-tab active" data-theory="observation" aria-current="page">Tokyo PMC88実観測</button>
       <button class="theory-tab" data-theory="ptolemy">プトレマイオス</button>
       <button class="theory-tab" data-theory="tycho">ティコ・ブラーエ</button>
       <button class="theory-tab" data-theory="copernicus">コペルニクス</button>
@@ -26,10 +26,10 @@
     <section id="ptolemyParameterPanel" class="parameter-switch card" aria-label="プトレマイオスのパラメータセット" hidden>
       <div>
         <span class="kicker">PTOLEMY PARAMETER SET</span>
-        <p>同じプトレマイオス型の幾何を、Carlsberg実観測へのフィット値と『アルマゲスト』の史実値で切り替えます。</p>
+        <p>同じプトレマイオス型の幾何を、Tokyo PMC88実観測へのフィット値と『アルマゲスト』の史実値で切り替えます。</p>
       </div>
       <div class="segmented" role="group" aria-label="パラメータセット">
-        <button class="parameter-button active" data-ptolemy-mode="fitted" aria-pressed="true">Carlsbergフィット</button>
+        <button class="parameter-button active" data-ptolemy-mode="fitted" aria-pressed="true">Tokyo PMC88フィット</button>
         <button class="parameter-button" data-ptolemy-mode="almagest" aria-pressed="false">アルマゲスト史実値</button>
       </div>
     </section>
@@ -37,7 +37,7 @@
     <section class="model-switcher" aria-label="モデルの段階切り替え">
       <button id="prevModel" class="arrow" aria-label="前のモデル">←</button>
       <div class="model-heading">
-        <span id="stageLabel" class="stage">CARLSBERG / OBSERVED</span>
+        <span id="stageLabel" class="stage">TOKYO PMC88 / OBSERVED</span>
         <h2 id="modelName">読み込み中</h2>
       </div>
       <button id="nextModel" class="arrow" aria-label="次のモデル">→</button>
@@ -55,7 +55,7 @@
           <div><span id="orbitKicker" class="kicker">ACTUAL ASTROMETRY</span><h3 id="orbitTitle">地球を固定した火星の実観測方向</h3></div>
         </div>
         <canvas id="orbitCanvas" aria-label="火星の実観測または選択中の惑星モデル"></canvas>
-        <p id="orbitNote" class="note">地球を中央に固定し、Carlsbergで実際に測定された火星の見かけ方向を表示します。</p>
+        <p id="orbitNote" class="note">地球を中央に固定し、Tokyo PMC88で1986〜1988年に実際に測定された火星の見かけ方向を表示します。</p>
       </article>
     </section>
 
@@ -74,12 +74,12 @@
         <div><dt id="referenceTerm">赤経 / 赤緯</dt><dd id="referenceLongitude">—</dd></div>
         <div><dt id="errorTerm">観測資料</dt><dd id="angularError">—</dd></div>
       </dl>
-      <p class="note">Carlsbergの実観測は見かけの地心赤経・赤緯です。モデル比較用の黄経は座標変換だけで求めており、地球や火星の軌道理論から生成した値ではありません。</p>
+      <p class="note">Tokyo PMC88の実観測は見かけの地心赤経・赤緯です。モデル比較用の黄経は座標変換だけで求めており、地球や火星の軌道理論から生成した値ではありません。</p>
     </section>
 
     <section class="card chart-card">
       <div class="section-head">
-        <div><span id="chartKicker" class="kicker">CARLSBERG</span><h3 id="chartTitle">Carlsberg火星実観測：地心黄経</h3></div>
+        <div><span id="chartKicker" class="kicker">TOKYO PMC88</span><h3 id="chartTitle">Tokyo PMC88火星実観測：地心黄経</h3></div>
       </div>
       <canvas id="longitudeChart" aria-label="火星の地心黄経グラフ"></canvas>
     </section>
@@ -93,10 +93,10 @@
     <section class="card methodology">
       <span class="kicker">METHOD</span>
       <h3>このページで何を比較しているか</h3>
-      <p>実観測モードでは地球を画面中央に固定し、Carlsberg Meridian Catalogの子午環観測で得られた火星の見かけ方向だけを一定半径上に描きます。距離は観測データに含まれないため表示には使いません。</p>
-      <p>緑の破線はCarlsberg実観測、赤い実線は選択中モデルの軌跡です。どちらもスライダー位置までに得られた部分だけを表示します。観測が大きく途切れた区間は、実際に連続観測したかのように見せないため破線を切ります。</p>
-      <p>プトレマイオスのCarlsbergフィットは、単純円 → 周転円 → 周転円＋離心円 → 周転円＋離心円＋エカントの順です。各段階をCarlsberg火星実観測の地心方向に合わせ、同じ観測点で角度誤差を評価します。</p>
-      <p>Carlsbergの元データは見かけの地心赤経・赤緯（equinox of date）です。画面ではこれを黄道座標へ回転して比較しています。この変換は座標系の変換であり、太陽中心の惑星軌道を前提にした基準暦ではありません。</p>
+      <p>実観測モードでは地球を画面中央に固定し、Tokyo Photoelectric Meridian Circle Catalog 1988の惑星個別観測で得られた火星の見かけ方向だけを一定半径上に描きます。79観測点は1986年1月24日から1988年12月30日までの約2.93年間に分布します。距離は観測データに含まれないため表示には使いません。</p>
+      <p>緑の破線はTokyo PMC88実観測、赤い実線は選択中モデルの軌跡です。どちらもスライダー位置までに得られた部分だけを表示します。観測が大きく途切れた区間は、実際に連続観測したかのように見せないため破線を切ります。</p>
+      <p>プトレマイオスのTokyo PMC88フィットは、単純円 → 周転円 → 周転円＋離心円 → 周転円＋離心円＋エカントの順です。各段階を79点の火星実観測の地心方向に合わせ、同じ観測点で角度誤差を評価します。</p>
+      <p>元データはUT1の観測日時と、equinox of dateの見かけの地心赤経・赤緯です。画面では赤経・赤緯を黄道座標へ回転して比較しています。この変換は座標系の変換であり、太陽中心の惑星軌道を前提にした基準暦ではありません。</p>
     </section>
   </main>
   <script type="module" src="./js/app-v4.js"></script>
