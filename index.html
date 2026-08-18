@@ -22,6 +22,17 @@
       <button class="theory-tab" data-theory="kepler">ケプラー</button>
     </nav>
 
+    <section id="ptolemyParameterPanel" class="parameter-switch card" aria-label="プトレマイオスのパラメータセット">
+      <div>
+        <span class="kicker">PTOLEMY PARAMETER SET</span>
+        <p>同じプトレマイオス型の幾何を、現代データへのフィット値と『アルマゲスト』の史実値で切り替えます。</p>
+      </div>
+      <div class="segmented" role="group" aria-label="パラメータセット">
+        <button class="parameter-button active" data-ptolemy-mode="fitted" aria-pressed="true">現代フィット</button>
+        <button class="parameter-button" data-ptolemy-mode="almagest" aria-pressed="false">アルマゲスト史実値</button>
+      </div>
+    </section>
+
     <section class="model-switcher" aria-label="モデルの段階切り替え">
       <button id="prevModel" class="arrow" aria-label="前のモデル">←</button>
       <div class="model-heading">
@@ -90,10 +101,10 @@
       <span class="kicker">METHOD</span>
       <h3>このページで何を比較しているか</h3>
       <p>左図では、モデルと基準データを同じ座標系にそろえて比較します。コペルニクスとケプラーでは太陽中心座標、ティコでは地球固定座標へ基準値を変換します。プトレマイオスは物理的な距離尺度が現代軌道と同じではないため、観測可能な地球からの方向だけを同一半径上で比較します。</p>
-      <p>右図はJPL Solar System Dynamicsの近似式から計算した現代基準の太陽中心軌道です。日付スライダーを動かすと、両図とも同じ日付になります。</p>
-      <p>各体系の計算は別々のJavaScriptプログラムです。プトレマイオスは4段階を独立ファイルで比較し、ティコとコペルニクスは等速円運動、ケプラーは楕円軌道とケプラー方程式を使います。定量評価は地心黄経のMAE・RMS・最大誤差で行います。</p>
+      <p>プトレマイオスの「現代フィット」は2020–2030年の基準トラックへ各段階を最適化した教育用モデルです。「アルマゲスト史実値」は火星の離心円・周転円・エカントの比、元期位置、平均日運動を古代の値のまま使い、現代まで外挿します。</p>
+      <p>右図はJPL Solar System Dynamicsの近似式から計算した現代基準の太陽中心軌道です。日付スライダーを動かすと、両図とも同じ日付になります。定量評価は地心黄経のMAE・RMS・最大誤差で行います。</p>
     </section>
   </main>
-  <script type="module" src="./js/app.js"></script>
+  <script type="module" src="./js/app-v2.js"></script>
 </body>
 </html>
