@@ -12,17 +12,18 @@
     <header class="hero">
       <p class="eyebrow">PLANETARY MODELS / MARS</p>
       <h1>Planetary Models</h1>
-      <p class="lead">火星の見かけの運動を、プトレマイオス、ティコ、コペルニクス、ケプラーのモデルで現代基準と比較する。</p>
+      <p class="lead">地球を固定した火星の観測データと、プトレマイオス、ティコ、コペルニクス、ケプラーのモデルを比較する。</p>
     </header>
 
     <nav class="theory-tabs" aria-label="天文学モデル">
-      <button class="theory-tab active" data-theory="ptolemy" aria-current="page">プトレマイオス</button>
+      <button class="theory-tab active" data-theory="observation" aria-current="page">観測データ</button>
+      <button class="theory-tab" data-theory="ptolemy">プトレマイオス</button>
       <button class="theory-tab" data-theory="tycho">ティコ・ブラーエ</button>
       <button class="theory-tab" data-theory="copernicus">コペルニクス</button>
       <button class="theory-tab" data-theory="kepler">ケプラー</button>
     </nav>
 
-    <section id="ptolemyParameterPanel" class="parameter-switch card" aria-label="プトレマイオスのパラメータセット">
+    <section id="ptolemyParameterPanel" class="parameter-switch card" aria-label="プトレマイオスのパラメータセット" hidden>
       <div>
         <span class="kicker">PTOLEMY PARAMETER SET</span>
         <p>同じプトレマイオス型の幾何を、現代データへのフィット値と『アルマゲスト』の史実値で切り替えます。</p>
@@ -36,7 +37,7 @@
     <section class="model-switcher" aria-label="モデルの段階切り替え">
       <button id="prevModel" class="arrow" aria-label="前のモデル">←</button>
       <div class="model-heading">
-        <span id="stageLabel" class="stage">STAGE 1 / 4</span>
+        <span id="stageLabel" class="stage">OBSERVATION / GEOCENTRIC</span>
         <h2 id="modelName">読み込み中</h2>
       </div>
       <button id="nextModel" class="arrow" aria-label="次のモデル">→</button>
@@ -45,16 +46,16 @@
     <section class="intro card">
       <p id="modelDescription"></p>
       <div id="modelElements" class="chips"></div>
-      <p class="source-line">現在実行中のプログラム: <code id="sourceFile"></code></p>
+      <p class="source-line">現在使用中のデータ／プログラム: <code id="sourceFile"></code></p>
     </section>
 
     <section class="grid orbit-compare-grid">
       <article class="card visual-card">
         <div class="section-head">
-          <div><span class="kicker">MODEL + REFERENCE</span><h3>モデルと現代基準の火星</h3></div>
+          <div><span id="orbitKicker" class="kicker">OBSERVED MOTION</span><h3 id="orbitTitle">地球を固定した火星の動き</h3></div>
         </div>
-        <canvas id="orbitCanvas" aria-label="選択中の惑星モデルと同一座標系に変換した基準火星"></canvas>
-        <p class="note">赤い MARS がモデル予測、緑の REF MARS が現代基準です。プトレマイオスでは物理的距離を比較できないため、同じ半径上で方向だけを比較します。</p>
+        <canvas id="orbitCanvas" aria-label="火星の運動または選択中の惑星モデル"></canvas>
+        <p id="orbitNote" class="note">地球を中央に固定し、2020–2030年の基準データの地心座標に従って火星を表示します。日付スライダーを動かすと、火星の見かけの運動だけを追えます。</p>
       </article>
     </section>
 
@@ -71,18 +72,18 @@
     <section class="card readings">
       <div class="section-head"><div><span class="kicker">APPARENT POSITION</span><h3>地球から見た火星の方向</h3></div></div>
       <dl>
-        <div><dt>モデル予測</dt><dd id="predictedLongitude">—</dd></div>
-        <div><dt>現代基準値</dt><dd id="referenceLongitude">—</dd></div>
-        <div><dt>角度誤差</dt><dd id="angularError">—</dd></div>
+        <div><dt id="predictedTerm">火星の地心黄経</dt><dd id="predictedLongitude">—</dd></div>
+        <div><dt id="referenceTerm">地心距離</dt><dd id="referenceLongitude">—</dd></div>
+        <div><dt id="errorTerm">表示座標</dt><dd id="angularError">—</dd></div>
       </dl>
-      <p class="note">角度はJ2000黄道面上の地心黄経。軌道図と同じ日の見かけ方向、全期間誤差を比較します。</p>
+      <p class="note">角度はJ2000黄道面上の地心黄経。モデル表示では同じ日の基準値との誤差を比較します。</p>
     </section>
 
     <section class="card chart-card">
       <div class="section-head">
-        <div><span class="kicker">2020–2030</span><h3>火星の地心黄経：モデル vs 基準データ</h3></div>
+        <div><span id="chartKicker" class="kicker">2020–2030</span><h3 id="chartTitle">火星の地心黄経：観測データ</h3></div>
       </div>
-      <canvas id="longitudeChart" aria-label="モデルと基準データの地心黄経比較グラフ"></canvas>
+      <canvas id="longitudeChart" aria-label="火星の地心黄経グラフ"></canvas>
     </section>
 
     <section class="grid stats-grid">
@@ -94,9 +95,10 @@
     <section class="card methodology">
       <span class="kicker">METHOD</span>
       <h3>このページで何を比較しているか</h3>
-      <p>軌道図では、赤で歴史モデルの天体位置、緑の円で現代基準位置を同じ座標系にそろえて重ねます。コペルニクスとケプラーでは太陽中心座標、ティコでは地球固定座標へ基準値を変換します。プトレマイオスは物理的な距離尺度が現代軌道と同じではないため、地球からの方向だけを同一半径上で比較します。</p>
-      <p>プトレマイオスの「現代フィット」は2020–2030年の基準トラックへ各段階を最適化した教育用モデルです。「アルマゲスト史実値」は火星の離心円・周転円・エカントの比、元期位置、平均日運動を古代の値のまま使い、現代まで外挿します。</p>
-      <p>日付スライダーを動かすとモデルと現代基準が同じ日付で更新されます。定量評価は地心黄経のMAE・RMS・最大誤差で行います。</p>
+      <p>「観測データ」では地球を原点に固定し、基準データの地心座標で火星だけを表示します。日付を動かすことで、順行・留・逆行をモデルを仮定せずに確認できます。</p>
+      <p>モデル表示では、赤で歴史モデルの火星位置、緑の円で現代基準位置を同じ座標系にそろえて重ねます。コペルニクスとケプラーでは太陽中心座標、ティコでは地球固定座標へ基準値を変換します。プトレマイオスは物理的な距離尺度が現代軌道と同じではないため、地球からの方向だけを同一半径上で比較します。</p>
+      <p>プトレマイオスの「現代フィット」は、単純円 → 周転円 → 周転円＋離心円 → 周転円＋離心円＋エカントの順で2020–2030年の基準トラックへ各段階を最適化した教育用モデルです。「アルマゲスト史実値」は火星の離心円・周転円・エカントの比、元期位置、平均日運動を古代の値のまま使い、現代まで外挿します。</p>
+      <p>日付スライダーを動かすと表示が同じ日付で更新されます。モデルの定量評価は地心黄経のMAE・RMS・最大誤差で行います。</p>
     </section>
   </main>
   <script type="module" src="./js/app-v2.js"></script>
