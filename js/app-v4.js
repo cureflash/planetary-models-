@@ -1,5 +1,5 @@
 const THEORIES = [
-  { id: 'observation', label: 'Tokyo PMC88実観測', files: [] },
+  { id: 'observation', label: 'USNO W2J00実観測', files: [] },
   {
     id: 'ptolemy', label: 'プトレマイオス',
     files: [
@@ -19,11 +19,11 @@ const OBSERVATION_MODEL = {
   model: {
     id: 'observation',
     stage: 0,
-    name: '地球固定・Tokyo PMC88火星実観測',
+    name: '地球固定・USNO W2J00火星実観測',
     shortName: '実観測',
-    sourceFile: 'data/mars_observations_tokyo_pmc88.csv',
-    description: 'Tokyo Photoelectric Meridian Circle Catalog 1988の火星実観測です。地球を中央に固定し、観測された見かけ方向だけを一定半径上に表示します。距離は仮定しません。',
-    elements: ['地球固定', '火星のみ', '実観測RA/Dec', '見かけ方向', '1986–1988'],
+    sourceFile: 'data/mars_observations_usno_w2j00.csv',
+    description: 'USNO W2J00 Transit Circle Catalogの火星実観測です。地球を中央に固定し、観測された見かけ方向だけを一定半径上に表示します。火星までの距離は仮定しません。',
+    elements: ['地球固定', '火星のみ', '実観測RA/Dec', '623方向測定', '1986–1995'],
   },
 };
 
@@ -80,7 +80,8 @@ function parseCSV(text) {
       raDeg: Number(obj.ra_deg),
       decDeg: Number(obj.dec_deg),
       longitudeDeg: Number(obj.ecliptic_lon_deg),
-      observationSeq: obj.observation_seq || '',
+      observer: obj.observer || '',
+      telescope: obj.telescope || '',
       sourceCatalog: obj.source_catalog || '',
     };
   }).filter(row => Number.isFinite(row.jd) && Number.isFinite(row.longitudeDeg));
@@ -161,7 +162,7 @@ async function switchModel(newIndex) {
     const files = filesForTheory(theory);
     stageIndex = (newIndex + files.length) % files.length;
     const file = files[stageIndex];
-    currentModule = await import(`${file}?theory=${theory.id}&mode=${ptolemyMode}&stage=${stageIndex}&v=tokyo-pmc88`);
+    currentModule = await import(`${file}?theory=${theory.id}&mode=${ptolemyMode}&stage=${stageIndex}&v=usno-w2j00-1`);
     currentPredictions = observations.map(row => currentModule.predict(row.jd));
     els.prev.disabled = files.length <= 1;
     els.next.disabled = files.length <= 1;
@@ -177,7 +178,7 @@ function renderModelHeader() {
   const files = filesForTheory(theory);
   const m = currentModule.model;
   if (theory.id === 'observation') {
-    els.stage.textContent = 'TOKYO PMC88 / OBSERVED';
+    els.stage.textContent = 'USNO W2J00 / OBSERVED';
   } else if (theory.id === 'ptolemy' && ptolemyMode === 'almagest') {
     els.stage.textContent = 'ALMAGEST / HISTORICAL PARAMETERS';
   } else if (files.length > 1) {
@@ -198,20 +199,20 @@ function updateViewLabels() {
   if (isObservationMode()) {
     els.orbitKicker.textContent = 'ACTUAL ASTROMETRY';
     els.orbitTitle.textContent = '地球を固定した火星の実観測方向';
-    els.orbitNote.textContent = '地球は中央に固定しています。緑の破線はTokyo PMC88で1986〜1988年に実際に測られた火星の見かけ方向を、観測順に結んだものです。距離は測定値ではないため一定半径で表示します。';
+    els.orbitNote.textContent = '地球は中央に固定しています。緑の破線はUSNO W2J00で実際に測られた火星の見かけ方向です。35日を超えて観測が空いた区間は線をつながず、観測していない期間を補間しません。距離は測定値ではないため一定半径で表示します。';
     els.chartKicker.textContent = `${first} – ${last}`;
-    els.chartTitle.textContent = 'Tokyo PMC88火星実観測：地心黄経';
+    els.chartTitle.textContent = 'USNO W2J00火星実観測：地心黄経';
     els.predictedTerm.textContent = '観測地心黄経';
     els.referenceTerm.textContent = '赤経 / 赤緯';
     els.errorTerm.textContent = '観測資料';
   } else {
-    els.orbitKicker.textContent = 'MODEL + TOKYO PMC88';
-    els.orbitTitle.textContent = 'モデルとTokyo PMC88実観測';
-    els.orbitNote.textContent = '赤い実線がモデルがスライダー位置までに辿った軌跡、緑の破線がTokyo PMC88実観測です。観測データは方向だけなので、プトレマイオスでは各時刻のモデル火星と同じ半径上へ観測方向を投影して比較します。';
+    els.orbitKicker.textContent = 'MODEL + USNO W2J00';
+    els.orbitTitle.textContent = 'モデルとUSNO W2J00実観測';
+    els.orbitNote.textContent = '赤い実線がモデル、緑の破線がUSNO W2J00実観測です。実観測は35日を超える欠測区間をつなぎません。観測データは方向だけなので、プトレマイオスでは各時刻のモデル火星と同じ半径上へ観測方向を投影して比較します。';
     els.chartKicker.textContent = `${first} – ${last}`;
-    els.chartTitle.textContent = '火星の地心黄経：モデル vs Tokyo PMC88実観測';
+    els.chartTitle.textContent = '火星の地心黄経：モデル vs USNO W2J00実観測';
     els.predictedTerm.textContent = 'モデル予測';
-    els.referenceTerm.textContent = 'Tokyo PMC88実観測';
+    els.referenceTerm.textContent = 'USNO W2J00実観測';
     els.errorTerm.textContent = '角度誤差';
   }
 }
@@ -236,11 +237,11 @@ function renderSelectedObservation() {
   const ref = observations[selectedIndex];
   const pred = currentPredictions[selectedIndex];
   if (!ref || !pred) return;
-  els.date.textContent = `${ref.date}  Tokyo PMC88`;
+  els.date.textContent = `${ref.date}  USNO W2J00`;
   if (isObservationMode()) {
     els.predicted.textContent = `${ref.longitudeDeg.toFixed(3)}°`;
     els.reference.textContent = `${(ref.raDeg / 15).toFixed(3)}h / ${ref.decDeg.toFixed(3)}°`;
-    els.error.textContent = ref.sourceCatalog || 'Tokyo PMC88';
+    els.error.textContent = ref.sourceCatalog || 'USNO W2J00';
   } else {
     els.predicted.textContent = `${pred.longitudeDeg.toFixed(3)}°`;
     els.reference.textContent = `${ref.longitudeDeg.toFixed(3)}°`;
@@ -357,7 +358,7 @@ function drawObservationGeometry(ctx, width, height, ref) {
   label(ctx, 'EARTH (FIXED)', earth.x + 10, earth.y - 10);
   dot(ctx, mars.x, mars.y, 8, '#ff704d');
   label(ctx, 'MARS (OBSERVED DIRECTION)', mars.x + 10, mars.y - 10);
-  label(ctx, 'DASHED = TOKYO PMC88 OBSERVATIONS', 12, 20, '#7de2ab');
+  label(ctx, 'DASHED = USNO W2J00 OBSERVATIONS', 12, 20, '#7de2ab');
 }
 
 function modelMarsForSystem(prediction) {
@@ -471,10 +472,10 @@ function drawPtolemyGeometry(ctx, width, height, pred, ref) {
   const modelRadius = Math.hypot(pred.mars.x, pred.mars.y);
   const observed = map(polarPoint(ref.longitudeDeg, modelRadius));
   ring(ctx, observed.x, observed.y, 10, '#7de2ab', 2.4);
-  label(ctx, 'TOKYO PMC88 (ANGLE)', observed.x + 12, observed.y + 15, '#7de2ab');
+  label(ctx, 'USNO W2J00 (ANGLE)', observed.x + 12, observed.y + 15, '#7de2ab');
 
   if (g.historical) {
-    label(ctx, 'ALMAGEST PARAMETERS — NOT FITTED TO TOKYO PMC88', 12, 20, '#ffd166');
+    label(ctx, 'ALMAGEST PARAMETERS — NOT FITTED TO W2J00', 12, 20, '#ffd166');
   }
 }
 
@@ -512,8 +513,8 @@ function drawLongitudeChart() {
     ctx.fillText(`${Math.round(yv)}°`, 3, y + 4);
   }
 
-  plotSeries(ctx, refU, xOf, yOf, '#7de2ab', 2, true);
-  if (!isObservationMode()) plotSeries(ctx, predU, xOf, yOf, '#ff8a65', 2, false);
+  plotSeries(ctx, refU, xOf, yOf, '#7de2ab', 2, true, 35);
+  if (!isObservationMode()) plotSeries(ctx, predU, xOf, yOf, '#ff8a65', 2, false, Infinity);
 
   const sx = xOf(selectedIndex);
   ctx.strokeStyle = 'rgba(255,255,255,.45)';
@@ -521,10 +522,10 @@ function drawLongitudeChart() {
   ctx.beginPath(); ctx.moveTo(sx, pad.t); ctx.lineTo(sx, height - pad.b); ctx.stroke();
 
   ctx.fillStyle = '#7de2ab'; ctx.fillRect(pad.l, 6, 13, 3);
-  ctx.fillStyle = 'rgba(229,235,247,.85)'; ctx.fillText('Tokyo PMC88 observed', pad.l + 18, 11);
+  ctx.fillStyle = 'rgba(229,235,247,.85)'; ctx.fillText('USNO W2J00 observed', pad.l + 18, 11);
   if (!isObservationMode()) {
-    ctx.fillStyle = '#ff8a65'; ctx.fillRect(pad.l + 170, 6, 13, 3);
-    ctx.fillStyle = 'rgba(229,235,247,.85)'; ctx.fillText('model', pad.l + 188, 11);
+    ctx.fillStyle = '#ff8a65'; ctx.fillRect(pad.l + 180, 6, 13, 3);
+    ctx.fillStyle = 'rgba(229,235,247,.85)'; ctx.fillText('model', pad.l + 198, 11);
   }
   ctx.fillStyle = 'rgba(190,205,230,.72)';
   ctx.fillText(observations[0].date, pad.l, height - 8);
@@ -532,27 +533,31 @@ function drawLongitudeChart() {
   ctx.fillText(end, width - pad.r - ctx.measureText(end).width, height - 8);
 }
 
-function plotSeries(ctx, values, xOf, yOf, color, lineWidth, dashed) {
+function plotSeries(ctx, values, xOf, yOf, color, lineWidth, dashed, maxGapDays = Infinity) {
   ctx.save();
   ctx.strokeStyle = color;
   ctx.lineWidth = lineWidth;
   ctx.setLineDash(dashed ? [7, 5] : []);
   ctx.beginPath();
+  let previousIndex = null;
   values.forEach((v, i) => {
     const x = xOf(i), y = yOf(v);
-    if (!i) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    const gap = previousIndex === null ? 0 : observations[i].jd - observations[previousIndex].jd;
+    if (previousIndex === null || gap > maxGapDays) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+    previousIndex = i;
   });
   ctx.stroke();
   ctx.restore();
 }
 
 async function init() {
-  const text = await fetch('./data/mars_observations_tokyo_pmc88.csv').then(r => {
-    if (!r.ok) throw new Error(`Tokyo PMC88 observations: HTTP ${r.status}`);
+  const text = await fetch('./data/mars_observations_usno_w2j00.csv?v=usno-w2j00-1').then(r => {
+    if (!r.ok) throw new Error(`USNO W2J00 observations: HTTP ${r.status}`);
     return r.text();
   });
   observations = parseCSV(text);
-  if (!observations.length) throw new Error('Tokyo PMC88火星観測が0件です');
+  if (!observations.length) throw new Error('USNO W2J00火星観測が0件です');
 
   els.slider.max = String(observations.length - 1);
   selectedIndex = 0;
