@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import csv
+import gzip
 import math
 import re
 import urllib.parse
@@ -17,10 +18,8 @@ VIZIER_ENDPOINTS = [
     "https://vizier.cfa.harvard.edu/viz-bin/asu-tsv",
     "https://vizier.idia.ac.za/viz-bin/asu-tsv",
 ]
-RAW_DIRS = [
-    "https://vizier.cfa.harvard.edu/ftp/cats/I/256/",
-    "https://cdsarc.cds.unistra.fr/ftp/cats/I/256/",
-]
+RAW_BASE = "https://vizier.cfa.harvard.edu/ftp/cats/I/256/"
+RAW_DIRS = [RAW_BASE, "https://cdsarc.cds.unistra.fr/ftp/cats/I/256/"]
 
 
 def fetch_url(url: str, timeout: int = 90) -> bytes:
@@ -102,6 +101,26 @@ def probe_raw_directory() -> list[str]:
     return []
 
 
+def probe_raw_planet() -> None:
+    readme = fetch_url(RAW_BASE + "ReadMe", timeout=30).decode("latin-1", errors="replace")
+    lines = readme.splitlines()
+    hits = [i for i, line in enumerate(lines) if "planet.dat" in line]
+    for i in hits[:3]:
+        lo = max(0, i - 5)
+        hi = min(len(lines), i + 45)
+        print("--- I/256 ReadMe around planet.dat ---")
+        for line in lines[lo:hi]:
+            print(line)
+
+    payload = fetch_url(RAW_BASE + "planet.dat.gz", timeout=60)
+    text = gzip.decompress(payload).decode("latin-1", errors="replace")
+    raw_lines = text.splitlines()
+    print(f"planet.dat rows={len(raw_lines)}")
+    print("--- planet.dat first 20 rows ---")
+    for line in raw_lines[:20]:
+        print(repr(line))
+
+
 def parse_hms(value: str) -> float:
     parts = value.replace(":", " ").split()
     if len(parts) >= 3:
@@ -160,6 +179,7 @@ def fetch_mars_rows() -> list[dict[str, str]]:
             return mars
         print(f"Name={constraint!r}: {len(rows)} returned rows, none identified as Mars")
     files = probe_raw_directory()
+    probe_raw_planet()
     raise RuntimeError("VizieR query returned no Mars observations; raw I/256 files=" + repr(files))
 
 
