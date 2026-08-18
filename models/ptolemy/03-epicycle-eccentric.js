@@ -1,18 +1,15 @@
-// Model 3: eccentric deferent + epicycle.
-// Independent program: previous model files are not imported.
+import { PTOLEMY_FIT } from './fitted-parameters.js';
 
-const EPOCH_JD = 2458849.5;
-const MARS_PERIOD_DAYS = 686.97959;
-const EARTH_PERIOD_DAYS = 365.256363004;
+// Model 3: eccentric deferent + epicycle.
+const EPOCH_JD = PTOLEMY_FIT.constants.epoch_jd;
+const MARS_PERIOD_DAYS = PTOLEMY_FIT.constants.mars_period_days;
+const EARTH_PERIOD_DAYS = PTOLEMY_FIT.constants.earth_period_days;
 const OMEGA_MARS = 2 * Math.PI / MARS_PERIOD_DAYS;
 const OMEGA_EPICYCLE = 2 * Math.PI / EARTH_PERIOD_DAYS;
 const R = 1.0;
-
-const ECCENTRICITY_DISTANCE = 0.17258591;
-const APSIS_ANGLE = 2.67128128;
-const DEFERENT_PHASE = 3.88689959;
-const EPICYCLE_RADIUS = 0.65339158;
-const EPICYCLE_PHASE = 4.86261660;
+const [ECCENTRICITY_DISTANCE, APSIS_ANGLE, DEFERENT_PHASE, EPICYCLE_RADIUS, EPICYCLE_PHASE] =
+  PTOLEMY_FIT.models.epicycle_eccentric.parameters;
+const stats = PTOLEMY_FIT.models.epicycle_eccentric.stats;
 
 export const model = {
   id: 'epicycle-eccentric',
@@ -20,9 +17,9 @@ export const model = {
   name: '周転円＋離心円',
   shortName: '離心円',
   sourceFile: 'models/ptolemy/03-epicycle-eccentric.js',
-  description: '周転円モデルに離心円を追加し、従円の中心を地球からずらします。逆行を保ったまま、長期間の火星位置へのずれを大きく減らします。',
-  elements: ['周転円', '離心円', '一様円運動'],
-  fittedStats: { maeDeg: 1.5636, rmsDeg: 2.1539, maxAbsDeg: 6.9691 },
+  description: '周転円モデルに離心円を追加し、従円の中心を地球からずらします。Carlsbergの実観測火星位置に各パラメータを合わせています。',
+  elements: ['周転円', '離心円', '一様円運動', 'Carlsberg実観測で評価'],
+  fittedStats: { maeDeg: stats.mae_deg, rmsDeg: stats.rms_deg, maxAbsDeg: stats.max_abs_deg },
 };
 
 function normalizeDeg(deg) {
