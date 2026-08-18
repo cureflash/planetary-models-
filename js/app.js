@@ -219,7 +219,7 @@ function drawReferenceOrbit(ref) {
 
   ctx.fillStyle = 'rgba(190,205,230,.72)';
   ctx.font = '11px ui-monospace, SFMono-Regular, Menlo, monospace';
-  ctx.fillText('JPL-derived heliocentric reference', 12, 20);
+  ctx.fillText('現代基準：太陽中心 J2000 黄道座標', 12, 20);
 }
 
 function drawReferencePath(ctx, map, xKey, yKey, color, lineWidth) {
@@ -284,25 +284,11 @@ function drawSystemGeometry(ctx, width, height, g, ref) {
     const b = map(g.sightline.to);
     ctx.strokeStyle = 'rgba(255,138,101,.55)';
     ctx.lineWidth = 1.5;
-    ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(a.x, a.y);
+    ctx.lineTo(b.x, b.y);
+    ctx.stroke();
   }
-
-  const observer = g.observer || { x: 0, y: 0 };
-  const rr = Math.min(1.35, extent * 0.55);
-  const angle = ref.longitudeDeg * Math.PI / 180;
-  const refEnd = {
-    x: observer.x + rr * Math.cos(angle),
-    y: observer.y + rr * Math.sin(angle),
-  };
-  const ro = map(observer);
-  const rp = map(refEnd);
-  ctx.setLineDash([5, 5]);
-  ctx.strokeStyle = 'rgba(125, 226, 171, .82)';
-  ctx.lineWidth = 1.5;
-  ctx.beginPath(); ctx.moveTo(ro.x, ro.y); ctx.lineTo(rp.x, rp.y); ctx.stroke();
-  ctx.setLineDash([]);
-  dot(ctx, rp.x, rp.y, 4, '#7de2ab');
-  label(ctx, 'REF. DIRECTION', rp.x + 8, rp.y - 8);
 
   (g.bodies || []).forEach(body => {
     const p = map(body);
@@ -310,6 +296,55 @@ function drawSystemGeometry(ctx, width, height, g, ref) {
     dot(ctx, p.x, p.y, style.radius, style.color);
     label(ctx, body.name, p.x + 9, p.y - 9);
   });
+
+  drawReferenceOverlayForSystem(ctx, map, g, ref);
+}
+
+function referenceBodiesForSystem(system, ref) {
+  if (!Number.isFinite(ref.earthX) || !Number.isFinite(ref.marsX)) return null;
+
+  if (system === 'tycho') {
+    return {
+      earth: { x: 0, y: 0 },
+      sun: { x: -ref.earthX, y: -ref.earthY },
+      mars: { x: ref.geoX, y: ref.geoY },
+    };
+  }
+
+  return {
+    sun: { x: 0, y: 0 },
+    earth: { x: ref.earthX, y: ref.earthY },
+    mars: { x: ref.marsX, y: ref.marsY },
+  };
+}
+
+function drawReferenceOverlayForSystem(ctx, map, g, ref) {
+  const rb = referenceBodiesForSystem(g.system, ref);
+  if (!rb) return;
+
+  const modelMars = (g.bodies || []).find(body => body.role === 'mars');
+  if (modelMars) {
+    const m = map(modelMars);
+    const r = map(rb.mars);
+    ctx.setLineDash([4, 4]);
+    ctx.strokeStyle = 'rgba(125,226,171,.72)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(m.x, m.y);
+    ctx.lineTo(r.x, r.y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  const refMars = map(rb.mars);
+  ring(ctx, refMars.x, refMars.y, 10, '#7de2ab', 2.5);
+  labelGreen(ctx, 'REF MARS', refMars.x + 12, refMars.y + 15);
+
+  if (rb.earth && g.system !== 'tycho') {
+    const refEarth = map(rb.earth);
+    ring(ctx, refEarth.x, refEarth.y, 9, '#7de2ab', 1.5);
+    labelGreen(ctx, 'REF EARTH', refEarth.x + 11, refEarth.y + 15);
+  }
 }
 
 function bodyStyle(role) {
@@ -329,7 +364,7 @@ function drawPtolemyGeometry(ctx, width, height, pred, ref) {
   drawAxes(ctx, width, height, ox, oy);
 
   const dc = map(g.deferentCenter);
-  ctx.strokeStyle = 'rgba(98, 153, 255, .68)';
+  ctx.strokeStyle = 'rgba(98,153,255,.68)';
   ctx.lineWidth = 2;
   ctx.beginPath();
   ctx.arc(dc.x, dc.y, g.deferentRadius * scale, 0, Math.PI * 2);
@@ -337,7 +372,7 @@ function drawPtolemyGeometry(ctx, width, height, pred, ref) {
 
   if (g.epicycleCenter) {
     const ec = map(g.epicycleCenter);
-    ctx.strokeStyle = 'rgba(241, 145, 85, .72)';
+    ctx.strokeStyle = 'rgba(241,145,85,.72)';
     ctx.beginPath();
     ctx.arc(ec.x, ec.y, g.epicycleRadius * scale, 0, Math.PI * 2);
     ctx.stroke();
@@ -358,16 +393,35 @@ function drawPtolemyGeometry(ctx, width, height, pred, ref) {
   dot(ctx, mars.x, mars.y, 7, '#ff704d');
   label(ctx, 'MARS', mars.x + 10, mars.y - 10);
 
-  const rr = 1.85;
+  // Ptolemaic distances are model units, not physical heliocentric AU.
+  // Put the reference Mars at the same model radius so only the observable direction is compared.
+  const modelRadius = Math.hypot(pred.mars.x, pred.mars.y);
   const a = ref.longitudeDeg * Math.PI / 180;
-  const rp = map({ x: rr * Math.cos(a), y: rr * Math.sin(a) });
-  ctx.setLineDash([5, 5]);
-  ctx.strokeStyle = 'rgba(125, 226, 171, .78)';
+  const refMarsModelFrame = {
+    x: modelRadius * Math.cos(a),
+    y: modelRadius * Math.sin(a),
+  };
+  const refMars = map(refMarsModelFrame);
+
+  ctx.setLineDash([4, 4]);
+  ctx.strokeStyle = 'rgba(125,226,171,.72)';
+  ctx.lineWidth = 1.5;
   ctx.beginPath();
-  ctx.moveTo(earth.x, earth.y); ctx.lineTo(rp.x, rp.y); ctx.stroke();
+  ctx.moveTo(mars.x, mars.y);
+  ctx.lineTo(refMars.x, refMars.y);
+  ctx.stroke();
   ctx.setLineDash([]);
-  dot(ctx, rp.x, rp.y, 4, '#7de2ab');
-  label(ctx, 'REF. DIRECTION', rp.x + 8, rp.y - 8);
+
+  ring(ctx, refMars.x, refMars.y, 10, '#7de2ab', 2.5);
+  labelGreen(ctx, 'REF MARS (ANGLE)', refMars.x + 12, refMars.y + 15);
+
+  ctx.setLineDash([5, 5]);
+  ctx.strokeStyle = 'rgba(125,226,171,.46)';
+  ctx.beginPath();
+  ctx.moveTo(earth.x, earth.y);
+  ctx.lineTo(refMars.x, refMars.y);
+  ctx.stroke();
+  ctx.setLineDash([]);
 }
 
 function dot(ctx, x, y, r, color) {
@@ -377,8 +431,22 @@ function dot(ctx, x, y, r, color) {
   ctx.fill();
 }
 
+function ring(ctx, x, y, r, color, lineWidth = 2) {
+  ctx.strokeStyle = color;
+  ctx.lineWidth = lineWidth;
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.stroke();
+}
+
 function label(ctx, text, x, y) {
   ctx.fillStyle = 'rgba(229,235,247,.9)';
+  ctx.font = '11px ui-monospace, SFMono-Regular, Menlo, monospace';
+  ctx.fillText(text, x, y);
+}
+
+function labelGreen(ctx, text, x, y) {
+  ctx.fillStyle = '#7de2ab';
   ctx.font = '11px ui-monospace, SFMono-Regular, Menlo, monospace';
   ctx.fillText(text, x, y);
 }
@@ -430,7 +498,7 @@ function drawLongitudeChart() {
   ctx.fillStyle = '#7de2ab';
   ctx.fillRect(pad.l, 5, 13, 3);
   ctx.fillStyle = 'rgba(229,235,247,.85)';
-  ctx.fillText('JPL reference', pad.l + 18, 10);
+  ctx.fillText('reference', pad.l + 18, 10);
   ctx.fillStyle = '#ff8a65';
   ctx.fillRect(pad.l + 110, 5, 13, 3);
   ctx.fillStyle = 'rgba(229,235,247,.85)';
