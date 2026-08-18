@@ -9,6 +9,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "data" / "mars_observations_tokyo_pmc88.csv"
+# Compatibility path for browsers that still have the pre-Tokyo app-v4.js cached.
+# The content is Tokyo PMC88 data; only the legacy column names are preserved.
+COMPAT_OUT = ROOT / "data" / "mars_observations_carlsberg.csv"
 MIN_BASELINE_DAYS = 730.0
 
 # Tokyo Photoelectric Meridian Circle Catalog 1988, Part III (CDS I/188).
@@ -154,7 +157,31 @@ def main() -> None:
         writer.writeheader()
         writer.writerows(output)
 
+    # Old app-v4.js versions expected Carlsberg-named columns. Keep a compatibility
+    # file so stale browser caches receive the same Tokyo PMC88 measurements rather
+    # than a 404. This file must never be described as Carlsberg data.
+    compatibility = [
+        {
+            "date": row["date"],
+            "timestamp_tdt": row["timestamp_ut1"],
+            "tdt_jd": row["jd_ut1"],
+            "ra_deg": row["ra_deg"],
+            "dec_deg": row["dec_deg"],
+            "ecliptic_lon_deg": row["ecliptic_lon_deg"],
+            "quality_flag": "",
+            "cmc_object_code": row["observation_seq"],
+            "source_volume": "Tokyo PMC88 Part III",
+            "source_catalog": row["source_catalog"],
+        }
+        for row in output
+    ]
+    with COMPAT_OUT.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(handle, fieldnames=list(compatibility[0].keys()))
+        writer.writeheader()
+        writer.writerows(compatibility)
+
     print(f"wrote {len(output)} Tokyo PMC88 Mars observations to {OUT}")
+    print(f"wrote stale-client compatibility data to {COMPAT_OUT}")
     print(
         f"range: {output[0]['timestamp_ut1']} .. {output[-1]['timestamp_ut1']} "
         f"({baseline:.1f} days / {baseline / 365.25:.2f} years)"
