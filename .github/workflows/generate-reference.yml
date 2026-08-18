@@ -4,29 +4,17 @@ on:
   push:
     branches: [main]
     paths:
-      - "tools/fetch_carlsberg_i256_mars.py"
-      - "tools/inspect_carlsberg_volumes.py"
-      - "tools/fit_ptolemy_models.py"
-      - "js/app-v4.js"
-      - "js/observation-frames.js"
-      - "models/ptolemy/**"
-      - "index.html"
+      - "tools/inspect_carlsberg_ftp.py"
       - ".github/workflows/generate-reference.yml"
   pull_request:
     branches: [main]
     paths:
-      - "tools/fetch_carlsberg_i256_mars.py"
-      - "tools/inspect_carlsberg_volumes.py"
-      - "tools/fit_ptolemy_models.py"
-      - "js/app-v4.js"
-      - "js/observation-frames.js"
-      - "models/ptolemy/**"
-      - "index.html"
+      - "tools/inspect_carlsberg_ftp.py"
       - ".github/workflows/generate-reference.yml"
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   generate:
@@ -40,11 +28,5 @@ jobs:
         with:
           python-version: "3.x"
 
-      - name: Inspect original Carlsberg volume planet tables
-        run: python tools/inspect_carlsberg_volumes.py
-
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: carlsberg-volume-inspection
-          path: tools/inspect_carlsberg_volumes.py
+      - name: Inspect original Carlsberg FTP planet tables
+        run: python tools/inspect_carlsberg_ftp.py
