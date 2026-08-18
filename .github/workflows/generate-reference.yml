@@ -6,12 +6,18 @@ on:
     paths:
       - "tools/fetch_carlsberg_mars.py"
       - "tools/fit_ptolemy_models.py"
+      - "js/app-v4.js"
+      - "models/ptolemy/**"
+      - "index.html"
       - ".github/workflows/generate-reference.yml"
   pull_request:
     branches: [main]
     paths:
       - "tools/fetch_carlsberg_mars.py"
       - "tools/fit_ptolemy_models.py"
+      - "js/app-v4.js"
+      - "models/ptolemy/**"
+      - "index.html"
       - ".github/workflows/generate-reference.yml"
       - "tools/carlsberg-pipeline-trigger.txt"
   workflow_dispatch:
@@ -39,6 +45,15 @@ jobs:
 
       - name: Fit Ptolemy stages to the observations
         run: python tools/fit_ptolemy_models.py
+
+      - name: Check browser JavaScript syntax
+        run: |
+          node --check js/app-v4.js
+          node --check models/ptolemy/01-simple-circle.js
+          node --check models/ptolemy/02-epicycle.js
+          node --check models/ptolemy/03-epicycle-eccentric.js
+          node --check models/ptolemy/04-equant.js
+          node --check models/ptolemy/fitted-parameters.js
 
       - name: Upload generated data for validation
         uses: actions/upload-artifact@v4
