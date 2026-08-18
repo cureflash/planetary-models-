@@ -208,7 +208,7 @@ function updateViewLabels() {
   } else {
     els.orbitKicker.textContent = 'MODEL + USNO W2J00';
     els.orbitTitle.textContent = 'モデルとUSNO W2J00実観測';
-    els.orbitNote.textContent = '赤い実線がモデル、緑の破線がUSNO W2J00実観測です。実観測は35日を超える欠測区間をつなぎません。観測データは方向だけなので、プトレマイオスでは各時刻のモデル火星と同じ半径上へ観測方向を投影して比較します。';
+    els.orbitNote.textContent = '赤い実線がモデル、緑の破線がUSNO W2J00実観測です。両方とも同じW2J00観測日時だけを結び、35日を超える欠測区間はつなぎません。観測データは方向だけなので、プトレマイオスでは各時刻のモデル火星と同じ半径上へ観測方向を投影して角度を比較します。';
     els.chartKicker.textContent = `${first} – ${last}`;
     els.chartTitle.textContent = '火星の地心黄経：モデル vs USNO W2J00実観測';
     els.predictedTerm.textContent = 'モデル予測';
@@ -318,15 +318,10 @@ function observationHistory(radiusForIndex) {
 
 function modelHistoryPtolemy() {
   const out = [];
-  if (selectedIndex < 1) return out;
-  const start = observations[0].jd;
-  const stop = observations[selectedIndex].jd;
-  for (let jd = start; jd <= stop; jd += 1) {
-    const p = currentModule.predict(jd);
-    out.push({ jd, point: p.mars });
+  for (let i = 0; i <= selectedIndex; i++) {
+    const p = currentPredictions[i];
+    out.push({ jd: observations[i].jd, point: p.mars });
   }
-  const final = currentModule.predict(stop);
-  if (!out.length || out.at(-1).jd !== stop) out.push({ jd: stop, point: final.mars });
   return out;
 }
 
@@ -443,7 +438,7 @@ function drawPtolemyGeometry(ctx, width, height, pred, ref) {
     const p = currentPredictions[i];
     return Math.hypot(p.mars.x, p.mars.y);
   });
-  drawPolyline(ctx, map, modelTrail, { color: '#ff8a65', lineWidth: 2.25 });
+  drawPolyline(ctx, map, modelTrail, { color: '#ff8a65', lineWidth: 2.25, maxGapDays: 35 });
   drawPolyline(ctx, map, observedTrail, { color: '#7de2ab', dashed: true, lineWidth: 2.25, maxGapDays: 35 });
 
   const dc = map(g.deferentCenter);
@@ -514,7 +509,7 @@ function drawLongitudeChart() {
   }
 
   plotSeries(ctx, refU, xOf, yOf, '#7de2ab', 2, true, 35);
-  if (!isObservationMode()) plotSeries(ctx, predU, xOf, yOf, '#ff8a65', 2, false, Infinity);
+  if (!isObservationMode()) plotSeries(ctx, predU, xOf, yOf, '#ff8a65', 2, false, 35);
 
   const sx = xOf(selectedIndex);
   ctx.strokeStyle = 'rgba(255,255,255,.45)';
