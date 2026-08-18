@@ -107,7 +107,7 @@ function drawPolyline(ctx, map, points, { color, dashed = false, lineWidth = 2, 
 function earthHeliocentricLongitudeDeg(jd) {
   // Low-precision apparent solar longitude from date, then +180° for Earth.
   // This supplies only the heliocentric coordinate frame. The Mars direction
-  // remains the Tokyo PMC88 measurement and no Mars distance is inferred.
+  // remains the W2J00 measurement and no Mars distance is inferred.
   const n = jd - 2451545.0;
   const meanLongitude = normalizeDeg(280.460 + 0.9856474 * n);
   const anomaly = normalizeDeg(357.528 + 0.9856003 * n) * Math.PI / 180;
@@ -154,7 +154,7 @@ function drawGeocentric() {
   label(ctx, 'EARTH (FIXED)', earth.x + 10, earth.y - 10);
   dot(ctx, direction.x, direction.y, 8, '#ff704d');
   label(ctx, 'MARS (OBSERVED DIRECTION)', direction.x + 10, direction.y - 10);
-  label(ctx, 'TOKYO PMC88 / MEASURED DIRECTION', 12, 20, '#7de2ab');
+  label(ctx, 'USNO W2J00 / MEASURED DIRECTION', 12, 20, '#7de2ab');
 }
 
 function drawHeliocentric() {
@@ -213,28 +213,28 @@ function drawHeliocentric() {
 
   const currentRay = polarPoint(current.longitudeDeg, rayLength);
   const currentEnd = map({ x: currentEarth.x + currentRay.x, y: currentEarth.y + currentRay.y });
-  label(ctx, 'TOKYO PMC88 LINE OF SIGHT', currentEnd.x + 8, currentEnd.y - 8, '#7de2ab');
+  label(ctx, 'USNO W2J00 LINE OF SIGHT', currentEnd.x + 8, currentEnd.y - 8, '#7de2ab');
   label(ctx, 'MARS DISTANCE IS NOT IN THE OBSERVATION', 12, 20, '#ffd166');
 }
 
 function applyObservationLabels() {
   if (!isObservationTab()) return;
   if (frame === 'geocentric') {
-    stageLabel.textContent = 'TOKYO PMC88 / GEOCENTRIC';
+    stageLabel.textContent = 'USNO W2J00 / GEOCENTRIC';
     modelName.textContent = '実観測・天動説表示（地球固定）';
-    modelDescription.textContent = 'Tokyo PMC88の火星実観測を、地球を固定した座標で表示します。観測された方向だけを使い、火星までの距離は仮定しません。';
+    modelDescription.textContent = 'USNO W2J00の火星実観測を、地球を固定した座標で表示します。観測された方向だけを使い、火星までの距離は仮定しません。';
     modelElements.innerHTML = ['地球固定', '実観測RA/Dec', '地心黄経', '距離は不明'].map(x => `<span>${x}</span>`).join('');
     orbitKicker.textContent = 'ACTUAL ASTROMETRY / GEOCENTRIC';
     orbitTitle.textContent = '実観測：天動説表示（地球固定）';
-    orbitNote.textContent = 'Tokyo PMC88で実際に測定された火星の見かけ方向です。火星までの距離は観測表にないため、方向を見せるための一定半径に置いています。';
+    orbitNote.textContent = 'USNO W2J00で実際に測定された火星の見かけ方向です。35日を超える欠測区間は線を切っています。火星までの距離は観測表にないため、方向を見せるための一定半径に置いています。';
   } else {
-    stageLabel.textContent = 'TOKYO PMC88 / HELIOCENTRIC FRAME';
+    stageLabel.textContent = 'USNO W2J00 / HELIOCENTRIC FRAME';
     modelName.textContent = '実観測・地動説表示（太陽固定）';
-    modelDescription.textContent = '太陽を固定し、地球を日付に応じて動かした座標枠の中で、Tokyo PMC88の実測方向を地球から伸びる視線として表示します。火星の距離や太陽中心位置は捏造しません。';
+    modelDescription.textContent = '太陽を固定し、地球を日付に応じて動かした座標枠の中で、USNO W2J00の実測方向を地球から伸びる視線として表示します。火星の距離や太陽中心位置は捏造しません。';
     modelElements.innerHTML = ['太陽固定', '地球移動', '実測視線', '火星距離は不明'].map(x => `<span>${x}</span>`).join('');
     orbitKicker.textContent = 'ACTUAL ASTROMETRY / HELIOCENTRIC FRAME';
     orbitTitle.textContent = '実観測：地動説表示（太陽固定）';
-    orbitNote.textContent = '緑線がTokyo PMC88で測った火星の実際の見かけ方向です。地球位置は座標枠を作るため日付から求めた太陽黄経の近似を使っています。実観測だけでは火星までの距離が分からないため、火星の太陽中心位置そのものは点として描きません。';
+    orbitNote.textContent = '緑線がUSNO W2J00で測った火星の実際の見かけ方向です。地球位置は座標枠を作るため日付から求めた太陽黄経の近似を使っています。実観測だけでは火星までの距離が分からないため、火星の太陽中心位置そのものは点として描きません。';
   }
 }
 
@@ -264,8 +264,8 @@ function setFrame(next) {
 
 async function init() {
   if (!panel || !canvas || !slider) return;
-  const text = await fetch('./data/mars_observations_tokyo_pmc88.csv?v=tokyo-pmc88-frames-1').then(response => {
-    if (!response.ok) throw new Error(`Tokyo PMC88 observations: HTTP ${response.status}`);
+  const text = await fetch('./data/mars_observations_usno_w2j00.csv?v=usno-w2j00-1').then(response => {
+    if (!response.ok) throw new Error(`USNO W2J00 observations: HTTP ${response.status}`);
     return response.text();
   });
   observations = parseCSV(text);
