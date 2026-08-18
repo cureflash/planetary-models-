@@ -1,0 +1,48 @@
+name: Apply manual Ptolemy fit and Copernicus stage
+
+on:
+  push:
+    branches: [manual-ptolemy-fit-and-copernicus-epicycle]
+    paths:
+      - "tools/patch_manual_fit_and_copernicus.py"
+      - ".github/workflows/apply-manual-fit-copernicus.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: manual-ptolemy-fit-and-copernicus-epicycle
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - name: Apply patch
+        run: python tools/patch_manual_fit_and_copernicus.py
+      - name: Check JavaScript syntax
+        run: |
+          node --check js/app-v3.js
+          node --check js/app-v4.js
+          node --check js/data-bootstrap.js
+          node --check models/ptolemy/fitted-parameters.js
+          node --check models/ptolemy/01-simple-circle.js
+          node --check models/ptolemy/02-epicycle.js
+          node --check models/ptolemy/03-epicycle-eccentric.js
+          node --check models/ptolemy/04-equant.js
+          node --check models/copernicus/01-heliocentric-circles.js
+          node --check models/copernicus/02-eccentric-epicycles.js
+      - name: Commit patched files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html js/app-v3.js js/app-v4.js js/data-bootstrap.js models/ptolemy/fitted-parameters.js models/ptolemy/01-simple-circle.js models/ptolemy/02-epicycle.js models/ptolemy/03-epicycle-eccentric.js models/ptolemy/04-equant.js models/copernicus/02-eccentric-epicycles.js .github/workflows/generate-reference.yml
+          if git diff --cached --quiet; then
+            echo "No changes"
+            exit 0
+          fi
+          git commit -m "Add manual Ptolemy fit selector and Copernicus epicycles"
+          git push
