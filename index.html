@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Planetary Models | Mars model comparison</title>
+  <link rel="stylesheet" href="./css/style.css">
+</head>
+<body>
+  <main id="app" class="shell">
+    <header class="hero">
+      <p class="eyebrow">PLANETARY MODELS / MARS</p>
+      <h1>Planetary Models</h1>
+      <p class="lead">火星の見かけの運動を、歴史上の惑星モデルごとに観測データと比較する。</p>
+    </header>
+
+    <nav class="theory-tabs" aria-label="天文学モデル">
+      <button class="theory-tab active" aria-current="page">プトレマイオス</button>
+      <button class="theory-tab" disabled title="今後追加予定">ティコ・ブラーエ</button>
+      <button class="theory-tab" disabled title="今後追加予定">コペルニクス</button>
+      <button class="theory-tab" disabled title="今後追加予定">ケプラー</button>
+    </nav>
+
+    <section class="model-switcher" aria-label="プトレマイオスモデルの段階切り替え">
+      <button id="prevModel" class="arrow" aria-label="前のモデル">←</button>
+      <div class="model-heading">
+        <span id="stageLabel" class="stage">STAGE 1 / 4</span>
+        <h2 id="modelName">読み込み中</h2>
+      </div>
+      <button id="nextModel" class="arrow" aria-label="次のモデル">→</button>
+    </section>
+
+    <section class="intro card">
+      <p id="modelDescription"></p>
+      <div id="modelElements" class="chips"></div>
+      <p class="source-line">現在実行中のプログラム: <code id="sourceFile"></code></p>
+    </section>
+
+    <section class="grid main-grid">
+      <article class="card visual-card">
+        <div class="section-head">
+          <div><span class="kicker">GEOMETRY</span><h3>天動説モデル</h3></div>
+          <span id="dateLabel" class="mono"></span>
+        </div>
+        <canvas id="orbitCanvas" aria-label="天動説モデルの幾何図"></canvas>
+        <input id="dateSlider" type="range" min="0" max="1" value="0" step="1" aria-label="日付">
+      </article>
+
+      <article class="card readings">
+        <div class="section-head"><div><span class="kicker">SAME DAY</span><h3>同じ日の比較</h3></div></div>
+        <dl>
+          <div><dt>モデル予測</dt><dd id="predictedLongitude">—</dd></div>
+          <div><dt>JPL由来基準値</dt><dd id="referenceLongitude">—</dd></div>
+          <div><dt>角度誤差</dt><dd id="angularError">—</dd></div>
+        </dl>
+        <p class="note">角度はJ2000黄道面上の地心黄経。緑の破線は基準データの方向です。</p>
+      </article>
+    </section>
+
+    <section class="card chart-card">
+      <div class="section-head">
+        <div><span class="kicker">2020–2030</span><h3>火星の地心黄経：モデル vs 基準データ</h3></div>
+      </div>
+      <canvas id="longitudeChart" aria-label="モデルと基準データの地心黄経比較グラフ"></canvas>
+    </section>
+
+    <section class="grid stats-grid">
+      <article class="stat card"><span>平均絶対誤差</span><strong id="mae">—</strong><small>MAE</small></article>
+      <article class="stat card"><span>二乗平均平方根誤差</span><strong id="rms">—</strong><small>RMS</small></article>
+      <article class="stat card"><span>最大絶対誤差</span><strong id="maxError">—</strong><small>MAX</small></article>
+    </section>
+
+    <section class="card methodology">
+      <span class="kicker">METHOD</span>
+      <h3>このページで何を検証しているか</h3>
+      <p>プトレマイオス欄の4段階は別々のJavaScriptプログラムです。左右ボタンを押すと、共通UIが別のモデルファイルを読み込み、そのプログラムで火星位置を再計算します。</p>
+      <p>比較基準はJPL Solar System Dynamicsが公開する1800–2050年用の惑星位置近似式から生成した2020–2030年の日次データです。高精度の実天体暦そのものではなく、再現可能な教育用基準データとして使用しています。</p>
+    </section>
+  </main>
+  <script type="module" src="./js/app.js"></script>
+</body>
+</html>
