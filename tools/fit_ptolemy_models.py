@@ -8,7 +8,7 @@ import numpy as np
 from scipy.optimize import differential_evolution, least_squares
 
 ROOT = Path(__file__).resolve().parents[1]
-DATA = ROOT / "data" / "mars_observations_carlsberg.csv"
+DATA = ROOT / "data" / "mars_observations_tokyo_pmc88.csv"
 OUT = ROOT / "data" / "ptolemy_mars_fitted_parameters.json"
 JS_OUT = ROOT / "models" / "ptolemy" / "fitted-parameters.js"
 
@@ -20,12 +20,11 @@ WM = 2 * np.pi / MARS_PERIOD
 WE = 2 * np.pi / EARTH_PERIOD
 
 rows = list(csv.DictReader(DATA.open(encoding="utf-8")))
-good_rows = [r for r in rows if r.get("quality_flag", "").strip() != "*"]
-if len(good_rows) < 20:
-    raise RuntimeError(f"too few unflagged Carlsberg Mars observations: {len(good_rows)}")
+if len(rows) < 20:
+    raise RuntimeError(f"too few Tokyo PMC88 Mars observations: {len(rows)}")
 
-jd = np.array([float(r["tdt_jd"]) for r in good_rows])
-obs = np.deg2rad(np.array([float(r["ecliptic_lon_deg"]) for r in good_rows]))
+jd = np.array([float(r["jd_ut1"]) for r in rows])
+obs = np.deg2rad(np.array([float(r["ecliptic_lon_deg"]) for r in rows]))
 t = jd - jd[0]
 
 
@@ -87,23 +86,24 @@ models = [
     ),
 ]
 
-volumes = sorted({r.get("source_volume", "") for r in good_rows if r.get("source_volume", "")})
 result = {
     "source": {
-        "catalog": "Carlsberg Meridian Catalog individual planet-observation tables",
-        "volumes": volumes,
-        "target": "Mars (CMC code 99040)",
+        "catalog": "Tokyo Photoelectric Meridian Circle Catalog 1988",
+        "catalog_id": "CDS I/188",
+        "table": "planets",
+        "target": "Mars",
         "observations_total": len(rows),
-        "observations_used": len(good_rows),
-        "filter": "exclude quality_flag='*' (high internal mean error)",
-        "coordinate": "apparent geocentric RA/Dec of date, converted to ecliptic longitude for model comparison",
+        "observations_used": len(rows),
+        "coordinate": "observed geocentric apparent RA/Dec of date, converted to ecliptic longitude for model comparison",
+        "time_scale": "UT1",
     },
     "constants": {
         "mars_period_days": MARS_PERIOD,
         "earth_period_days": EARTH_PERIOD,
         "epoch_jd": float(jd[0]),
-        "epoch_date": good_rows[0]["date"],
-        "last_date": good_rows[-1]["date"],
+        "epoch_date": rows[0]["date"],
+        "last_date": rows[-1]["date"],
+        "baseline_days": float(jd[-1] - jd[0]),
     },
     "models": {},
 }
@@ -146,7 +146,7 @@ for name, fn, bounds in models:
     print(name, p, stats)
 
 OUT.write_text(json.dumps(result, indent=2), encoding="utf-8")
-js = "// Auto-generated from Carlsberg Mars observations by tools/fit_ptolemy_models.py.\n"
+js = "// Auto-generated from Tokyo PMC88 Mars observations by tools/fit_ptolemy_models.py.\n"
 js += "export const PTOLEMY_FIT = " + json.dumps(result, ensure_ascii=False, indent=2) + ";\n"
 JS_OUT.write_text(js, encoding="utf-8")
 
