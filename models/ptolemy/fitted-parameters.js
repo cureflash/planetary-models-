@@ -1,4 +1,5 @@
-{
+// Auto-generated from Carlsberg CMC4 Mars observations by tools/fit_ptolemy_models.py.
+export const PTOLEMY_FIT = {
   "source": {
     "catalog": "CDS I/147 table2.dat",
     "name": "Carlsberg Meridian Catalog Vol. 4 (CMC4)",
@@ -67,4 +68,4 @@
       }
     }
   }
-}
+};
