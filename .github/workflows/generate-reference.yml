@@ -1,0 +1,34 @@
+name: Generate Mars reference data
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "tools/generate_reference.py"
+      - ".github/workflows/generate-reference.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - name: Generate daily Mars reference CSV
+        run: python tools/generate_reference.py
+      - name: Commit generated CSV
+        run: |
+          if [ -z "$(git status --porcelain -- data/mars_reference_2020_2030.csv)" ]; then
+            echo "Reference data already up to date."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/mars_reference_2020_2030.csv
+          git commit -m "Generate Mars reference data"
+          git push
