@@ -77,25 +77,38 @@ def heliocentric_xyz(body: str, jd: float):
     return x, y, z
 
 def main():
-    start = date(2020,1,1)
-    stop = date(2030,1,1)
+    start = date(2020, 1, 1)
+    stop = date(2030, 1, 1)
     rows = []
     d = start
     while d <= stop:
         jd = jd_from_date(d)
         ex, ey, ez = heliocentric_xyz('emb', jd)
         mx, my, mz = heliocentric_xyz('mars', jd)
-        gx, gy, gz = mx-ex, my-ey, mz-ez
+        gx, gy, gz = mx - ex, my - ey, mz - ez
         lon = math.degrees(math.atan2(gy, gx)) % 360.0
         dist = math.sqrt(gx*gx + gy*gy + gz*gz)
-        rows.append([d.isoformat(), f'{jd:.1f}', gx,gy,lon,dist])
+        rows.append([
+            d.isoformat(), f'{jd:.1f}',
+            ex, ey, ez,
+            mx, my, mz,
+            gx, gy, gz,
+            lon, dist,
+        ])
         d += timedelta(days=1)
+
     OUT.parent.mkdir(parents=True, exist_ok=True)
     with OUT.open('w', newline='', encoding='utf-8') as f:
         w = csv.writer(f)
-        w.writerow(['date','jd','geo_x_au','geo_y_au','geo_lon_deg','geo_distance_au'])
+        w.writerow([
+            'date', 'jd',
+            'earth_x_au', 'earth_y_au', 'earth_z_au',
+            'mars_x_au', 'mars_y_au', 'mars_z_au',
+            'geo_x_au', 'geo_y_au', 'geo_z_au',
+            'geo_lon_deg', 'geo_distance_au',
+        ])
         for r in rows:
-            w.writerow([r[0],r[1]] + [f'{v:.10f}' for v in r[2:]])
+            w.writerow([r[0], r[1]] + [f'{v:.10f}' for v in r[2:]])
     print(f'wrote {len(rows)} rows to {OUT}')
 
 if __name__ == '__main__':
