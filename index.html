@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="color-scheme" content="dark">
   <title>Planetary Models | Mars model comparison</title>
-  <link rel="stylesheet" href="./css/style.css?v=usno-w2j00-1">
+  <link rel="stylesheet" href="./css/style.css?v=usno-w2j00-sky-1">
 </head>
 <body>
   <main id="app" class="shell">
@@ -23,13 +23,14 @@
       <button class="theory-tab" data-theory="kepler">ケプラー</button>
     </nav>
 
-    <section id="observationFramePanel" class="parameter-switch card" aria-label="実観測の座標表示">
+    <section id="observationFramePanel" class="parameter-switch card" aria-label="実観測の表示方法">
       <div>
-        <span class="kicker">OBSERVATION FRAME</span>
-        <p>同じUSNO W2J00実測データを、地球固定と太陽固定の2つの座標表示で見ます。</p>
+        <span class="kicker">OBSERVATION VIEW</span>
+        <p>同じUSNO W2J00実測データを、天球上の軌跡・地球固定方向・太陽固定視線の3通りで見ます。</p>
       </div>
-      <div class="segmented" role="group" aria-label="実観測の表示座標">
-        <button class="parameter-button active" data-observation-frame="geocentric" aria-pressed="true">天動説表示・地球固定</button>
+      <div class="segmented" role="group" aria-label="実観測の表示方法">
+        <button class="parameter-button active" data-observation-frame="sky" aria-pressed="true">天球上の軌跡・RA×Dec</button>
+        <button class="parameter-button" data-observation-frame="geocentric" aria-pressed="false">天動説表示・地球固定</button>
         <button class="parameter-button" data-observation-frame="heliocentric" aria-pressed="false">地動説表示・太陽固定</button>
       </div>
     </section>
@@ -48,14 +49,14 @@
     <section class="model-switcher" aria-label="モデルの段階切り替え">
       <button id="prevModel" class="arrow" aria-label="前のモデル">←</button>
       <div class="model-heading">
-        <span id="stageLabel" class="stage">USNO W2J00 / OBSERVED</span>
-        <h2 id="modelName">読み込み中</h2>
+        <span id="stageLabel" class="stage">USNO W2J00 / RA–DEC SKY TRACK</span>
+        <h2 id="modelName">実観測・天球上の火星軌跡</h2>
       </div>
       <button id="nextModel" class="arrow" aria-label="次のモデル">→</button>
     </section>
 
     <section class="intro card">
-      <p id="modelDescription"></p>
+      <p id="modelDescription">USNO W2J00が実際に測った火星の赤経と赤緯を、そのまま天球上の2次元軌跡として表示します。</p>
       <div id="modelElements" class="chips"></div>
       <p class="source-line">現在使用中のデータ／プログラム: <code id="sourceFile"></code></p>
     </section>
@@ -63,10 +64,10 @@
     <section class="grid orbit-compare-grid">
       <article class="card visual-card">
         <div class="section-head">
-          <div><span id="orbitKicker" class="kicker">ACTUAL ASTROMETRY</span><h3 id="orbitTitle">地球を固定した火星の実観測方向</h3></div>
+          <div><span id="orbitKicker" class="kicker">ACTUAL ASTROMETRY / SKY PLANE</span><h3 id="orbitTitle">実観測：赤経 × 赤緯の天球上の軌跡</h3></div>
         </div>
         <canvas id="orbitCanvas" aria-label="火星の実観測または選択中の惑星モデル"></canvas>
-        <p id="orbitNote" class="note">USNO W2J00で実際に測定された火星の見かけ方向を表示します。長い欠測区間は線をつなぎません。</p>
+        <p id="orbitNote" class="note">スライダー位置を含む連続観測区間を自動拡大し、逆行によるループ状の見かけの軌跡が潰れないよう表示します。35日を超える欠測は別区間として扱います。</p>
       </article>
     </section>
 
@@ -105,14 +106,15 @@
       <span class="kicker">METHOD</span>
       <h3>このページで何を比較しているか</h3>
       <p>実観測はUSNO W2J00 Transit Circle Catalog（VizieR I/334）の火星観測です。火星746記録のうち、赤経と赤緯が両方そろった623方向測定を使用し、1986年1月21日から1995年6月13日まで約9.39年間を含みます。</p>
-      <p>実際の観測は連続していません。最長の欠測は1989年1月27日から1990年9月2日まで約582.5日あります。そこで観測軌跡と観測グラフは35日を超える区間を結ばず、観測していない日の位置を補間・生成しません。</p>
-      <p>「天動説表示・地球固定」では、観測された方向だけを地球中心の一定半径上に描きます。火星までの距離は実観測に含まれないため、半径には物理的な意味を持たせません。</p>
+      <p>「天球上の軌跡・RA×Dec」は、実際に測られた赤経と赤緯を直接プロットします。スライダー位置を含む連続観測区間だけを自動拡大するため、順行から逆行へ向きが反転してできるループやS字状の見かけの運動を確認できます。赤経0hをまたぐ観測は連続するようアンラップします。</p>
+      <p>実際の観測は連続していません。最長の欠測は1989年1月27日から1990年9月2日まで約582.5日あります。そこで35日を超える空白は別の観測区間として扱い、観測していない日の位置を補間・生成しません。</p>
+      <p>「天動説表示・地球固定」では、観測された方向だけを地球中心の一定半径上に描きます。この半径は表示用であり、物理的な火星軌道ではありません。</p>
       <p>「地動説表示・太陽固定」では、太陽を中央に固定し、日付から求めた太陽黄経の近似を使って地球位置を置き、各W2J00観測を地球から伸びる実測視線として描きます。ここでも火星の距離は仮定せず、火星の太陽中心位置そのものを実測値として捏造しません。</p>
       <p>緑はUSNO W2J00実観測、赤は選択中モデルです。プトレマイオスのW2J00フィットは、単純円 → 周転円 → 周転円＋離心円 → 周転円＋離心円＋エカントの順で、同じ623観測点への角度誤差を評価します。</p>
       <p>画面で使う地心黄経は、観測された赤経・赤緯を黄道座標へ回転して求めたものです。この座標変換自体には太陽中心の火星軌道モデルを使っていません。</p>
     </section>
   </main>
-  <script type="module" src="./js/app-v4.js?v=usno-w2j00-1"></script>
-  <script type="module" src="./js/observation-frames.js?v=usno-w2j00-1"></script>
+  <script type="module" src="./js/app-v4.js?v=usno-w2j00-sky-1"></script>
+  <script type="module" src="./js/observation-frames.js?v=usno-w2j00-sky-1"></script>
 </body>
 </html>
