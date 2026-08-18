@@ -1,0 +1,38 @@
+// Fit values originally obtained against the JPL-derived 2020–2030 daily reference track.
+export const JPL_FIT = {
+  source: {
+    catalog: 'JPL Approximate Positions of the Planets derived reference',
+    target: 'Mars',
+    observations_total: 3654,
+    observations_used: 3654,
+    coordinate: 'computed geocentric ecliptic longitude from heliocentric Earth/Mars coordinates',
+    time_scale: 'daily reference at 0h',
+  },
+  constants: {
+    mars_period_days: 686.97959,
+    earth_period_days: 365.256363004,
+    epoch_jd: 2458849.5,
+    epoch_date: '2020-01-01',
+    last_date: '2030-01-01',
+    baseline_days: 3653,
+    max_observation_gap_days: 1,
+  },
+  models: {
+    simple_circle: {
+      parameters: [3.927411376609142],
+      stats: { mae_deg: 28.32269555918917, rms_deg: 31.556261795797834, max_abs_deg: 53.79035159031259 },
+    },
+    epicycle_only: {
+      parameters: [3.9241970658371463, 0.671738310095002, 4.804302193416742],
+      stats: { mae_deg: 6.694486120756341, rms_deg: 8.46964382846208, max_abs_deg: 33.343992172391495 },
+    },
+    epicycle_eccentric: {
+      parameters: [0.17258591168260215, 2.671281275258713, 3.8868995862655487, 0.6533915801220399, 4.862616604638125],
+      stats: { mae_deg: 1.5635717237437636, rms_deg: 2.1538615474142815, max_abs_deg: 6.96905756113484 },
+    },
+    equant: {
+      parameters: [0.0986924140551202, 2.6447570853728486, 3.896347277055541, 0.6571580400273639, 4.881979349164461],
+      stats: { mae_deg: 0.24363775734720172, rms_deg: 0.29713047918862084, max_abs_deg: 0.9274382517170705 },
+    },
+  },
+};

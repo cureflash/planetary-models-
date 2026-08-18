@@ -10,7 +10,7 @@ from scipy.optimize import differential_evolution, least_squares
 ROOT = Path(__file__).resolve().parents[1]
 DATA = ROOT / "data" / "mars_observations_usno_w2j00.csv"
 OUT = ROOT / "data" / "ptolemy_mars_fitted_parameters.json"
-JS_OUT = ROOT / "models" / "ptolemy" / "fitted-parameters.js"
+JS_OUT = ROOT / "models" / "ptolemy" / "fitted-parameters-w2j00.js"
 
 # Mean periods are fixed constants for this educational comparison. The fitted
 # quantities are phase, epicycle size, eccentric offset and apsidal angle.
@@ -149,7 +149,7 @@ for name, fn, bounds in models:
 
 OUT.write_text(json.dumps(result, indent=2), encoding="utf-8")
 js = "// Auto-generated from USNO W2J00 Mars observations by tools/fit_ptolemy_models.py.\n"
-js += "export const PTOLEMY_FIT = " + json.dumps(result, ensure_ascii=False, indent=2) + ";\n"
+js += "export const W2J00_FIT = " + json.dumps(result, ensure_ascii=False, indent=2) + ";\n"
 JS_OUT.write_text(js, encoding="utf-8")
 
 print("wrote", OUT)

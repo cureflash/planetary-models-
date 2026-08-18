@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="color-scheme" content="dark">
   <title>Planetary Models | Mars model comparison</title>
-  <link rel="stylesheet" href="./css/style.css?v=usno-w2j00-sky-2">
+  <link rel="stylesheet" href="./css/style.css?v=dataset-switch-1">
 </head>
 <body>
   <main id="app" class="shell">
@@ -14,6 +14,17 @@
       <h1>Planetary Models</h1>
       <p class="lead">USNO W2J00 Transit Circle Catalogの火星実観測と、プトレマイオス、ティコ、コペルニクス、ケプラーのモデルを比較する。</p>
     </header>
+
+    <section id="datasetPanel" class="parameter-switch card" aria-label="比較に使うデータ">
+      <div>
+        <span class="kicker">DATA SOURCE</span>
+        <p>実際の天体位置観測と、最初に使っていたJPL軌道要素由来の2020–2030年計算基準値を切り替えます。</p>
+      </div>
+      <div class="segmented" role="group" aria-label="比較データ">
+        <button class="parameter-button active" data-dataset="w2j00" aria-pressed="true">USNO W2J00実観測</button>
+        <button class="parameter-button" data-dataset="jpl" aria-pressed="false">JPL計算基準値 2020–2030</button>
+      </div>
+    </section>
 
     <nav class="theory-tabs" aria-label="天文学モデル">
       <button class="theory-tab active" data-theory="observation" aria-current="page">USNO W2J00実観測</button>
@@ -67,6 +78,7 @@
           <div><span id="orbitKicker" class="kicker">ACTUAL ASTROMETRY / SKY PLANE</span><h3 id="orbitTitle">実観測：赤経 × 赤緯の天球上の軌跡</h3></div>
         </div>
         <canvas id="orbitCanvas" aria-label="火星の実観測または選択中の惑星モデル"></canvas>
+        <canvas id="referenceOrbitCanvas" hidden aria-hidden="true"></canvas>
         <p id="orbitNote" class="note">スライダー位置を含む連続観測区間を自動拡大し、逆行によるループ状の見かけの軌跡が潰れないよう表示します。35日を超える欠測は別区間として扱います。</p>
       </article>
     </section>
@@ -114,7 +126,6 @@
       <p>画面で使う地心黄経は、観測された赤経・赤緯を黄道座標へ回転して求めたものです。この座標変換自体には太陽中心の火星軌道モデルを使っていません。</p>
     </section>
   </main>
-  <script type="module" src="./js/app-v5.js?v=1"></script>
-  <script type="module" src="./js/observation-frames.js?v=usno-w2j00-sky-2"></script>
+  <script type="module" src="./js/data-bootstrap.js?v=dataset-switch-2"></script>
 </body>
 </html>
