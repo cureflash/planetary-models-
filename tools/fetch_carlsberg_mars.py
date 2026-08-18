@@ -1,120 +1,109 @@
 from __future__ import annotations
 
 import csv
-import gzip
 import math
+import urllib.parse
 import urllib.request
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "data" / "mars_observations_carlsberg.csv"
-MARS_CMC_CODE = 99040
+MIN_BASELINE_DAYS = 730.0
 
-# Individual Carlsberg Meridian Catalog volumes retain their planet-observation
-# tables even where the later I/256 compound VizieR table does not expose Mars.
-# CMC4 supersedes CMC1-3, so start there and then append later independent volumes.
-CATALOGS = [
-    {
-        "volume": "CMC4",
-        "catalog": "I/147",
-        "urls": [
-            "https://vizier.cfa.harvard.edu/ftp/cats/I/147/table2.dat.gz",
-            "https://cdsarc.cds.unistra.fr/ftp/cats/I/147/table2.dat.gz",
-        ],
-    },
-    {
-        "volume": "CMC5",
-        "catalog": "I/170A",
-        "urls": [
-            "https://vizier.cfa.harvard.edu/ftp/cats/i/170A/table2.gz",
-            "https://vizier.cfa.harvard.edu/ftp/cats/I/170A/table2.gz",
-        ],
-    },
-    {
-        "volume": "CMC6",
-        "catalog": "I/189",
-        "urls": [
-            "https://vizier.cfa.harvard.edu/ftp/cats/I/189/table2.gz",
-        ],
-    },
-    {
-        "volume": "CMC7",
-        "catalog": "I/205",
-        "urls": [
-            "https://vizier.cfa.harvard.edu/ftp/cats/I/205/table2.gz",
-        ],
-    },
-    {
-        "volume": "CMC8",
-        "catalog": "I/213",
-        "urls": [
-            "https://vizier.cfa.harvard.edu/ftp/cats/I/213/table2.gz",
-        ],
-    },
+# I/256 is the compound Carlsberg Meridian Catalogues 1-11 table.  Its
+# solar-system table contains the individual observations made on La Palma
+# between May 1984 and May 1998.  Query Mars server-side instead of downloading
+# the whole mixed planet/minor-planet table and guessing an historical object
+# code used by older volumes.
+VIZIER_ENDPOINTS = [
+    "https://vizier.cds.unistra.fr/viz-bin/asu-tsv",
+    "https://vizier.cfa.harvard.edu/viz-bin/asu-tsv",
+    "https://vizier.idia.ac.za/viz-bin/asu-tsv",
 ]
 
 
-def download_gzip(catalog: dict[str, object]) -> str | None:
+def download_query(name_constraint: str) -> str:
+    params = {
+        "-source": "I/256/planet",
+        "-out": "CMC MP Name TT flag RA DE",
+        "-out.max": "unlimited",
+        "Name": name_constraint,
+    }
+    query = urllib.parse.urlencode(params)
     last_error: Exception | None = None
-    for url in catalog["urls"]:
+    for endpoint in VIZIER_ENDPOINTS:
+        url = f"{endpoint}?{query}"
         try:
             request = urllib.request.Request(
-                str(url),
+                url,
                 headers={"User-Agent": "planetary-models-educational-site/1.0"},
             )
-            with urllib.request.urlopen(request, timeout=60) as response:
-                payload = response.read()
-            text = gzip.decompress(payload).decode("ascii", errors="replace")
-            if len(text.splitlines()) < 10:
-                raise RuntimeError("downloaded file is unexpectedly short")
-            print(f"downloaded {catalog['volume']} from {url} ({len(text.splitlines())} rows)")
+            with urllib.request.urlopen(request, timeout=90) as response:
+                text = response.read().decode("utf-8", errors="replace")
+            if "I/256/planet" not in text and "Name" not in text:
+                raise RuntimeError("response does not look like I/256/planet")
+            print(f"downloaded I/256/planet Name={name_constraint!r} from {endpoint}")
             return text
         except Exception as exc:
-            print(f"failed {catalog['volume']} {url}: {exc}")
+            print(f"failed {endpoint}: {exc}")
             last_error = exc
-    print(f"skipping {catalog['volume']}: all URLs failed ({last_error})")
-    return None
+    raise RuntimeError(f"all VizieR mirrors failed: {last_error}")
 
 
-def parse_int(field: str) -> int:
-    return int(field.strip())
+def parse_asu_tsv(text: str) -> list[dict[str, str]]:
+    lines = text.splitlines()
+    header_index: int | None = None
+    header: list[str] | None = None
+    for i, line in enumerate(lines):
+        if not line or line.startswith("#"):
+            continue
+        cells = [cell.strip() for cell in line.split("\t")]
+        if {"Name", "TT", "RA", "DE"}.issubset(set(cells)):
+            header_index = i
+            header = cells
+            print("VizieR columns:", header)
+            break
+    if header_index is None or header is None:
+        sample = [line for line in lines if line and not line.startswith("#")][:20]
+        raise RuntimeError("could not locate VizieR header; sample=" + repr(sample))
+
+    rows: list[dict[str, str]] = []
+    for line in lines[header_index + 1 :]:
+        if not line or line.startswith("#"):
+            continue
+        cells = [cell.strip() for cell in line.split("\t")]
+        if len(cells) != len(header):
+            continue
+        if all((not cell) or set(cell) <= {"-"} for cell in cells):
+            continue
+        row = dict(zip(header, cells))
+        try:
+            float(row["TT"])
+        except (ValueError, TypeError):
+            continue
+        rows.append(row)
+    return rows
 
 
-def parse_float(field: str) -> float:
-    return float(field.strip())
+def parse_hms(value: str) -> float:
+    parts = value.replace(":", " ").split()
+    if len(parts) >= 3:
+        h, m, s = map(float, parts[:3])
+        return 15.0 * (h + m / 60.0 + s / 3600.0)
+    x = float(value)
+    return x * 15.0 if abs(x) <= 24.0 else x
 
 
-def parse_planet_line(line: str) -> dict[str, float | int | str] | None:
-    # CMC4-8 planet tables use the same classic fixed-width layout documented
-    # for CMC4: object code, TDT-2440000, quality flag, apparent geocentric RA/Dec.
-    if len(line) < 52:
-        return None
-    try:
-        planet = parse_int(line[0:6])
-        jd = 2440000.0 + parse_float(line[6:21])
-        flag = line[21:22].strip()
-        rah = parse_int(line[25:27])
-        ram = parse_int(line[28:30])
-        ras = parse_float(line[31:37])
-        de_sign = -1.0 if line[40:41] == "-" else 1.0
-        ded = parse_int(line[41:43])
-        dem = parse_int(line[44:46])
-        des = parse_float(line[47:52])
-    except ValueError:
-        return None
-
-    if not (0 <= rah <= 23 and 0 <= ram <= 59 and 0 <= ded <= 90 and 0 <= dem <= 59):
-        return None
-    ra_deg = 15.0 * (rah + ram / 60.0 + ras / 3600.0)
-    dec_deg = de_sign * (ded + dem / 60.0 + des / 3600.0)
-    return {
-        "planet": planet,
-        "jd": jd,
-        "flag": flag,
-        "ra_deg": ra_deg,
-        "dec_deg": dec_deg,
-    }
+def parse_dms(value: str) -> float:
+    parts = value.replace(":", " ").split()
+    if len(parts) >= 3:
+        sign = -1.0 if parts[0].startswith("-") else 1.0
+        d = abs(float(parts[0]))
+        m = float(parts[1])
+        s = float(parts[2])
+        return sign * (d + m / 60.0 + s / 3600.0)
+    return float(value)
 
 
 def mean_obliquity_deg(jd: float) -> float:
@@ -124,7 +113,7 @@ def mean_obliquity_deg(jd: float) -> float:
 
 
 def equatorial_to_ecliptic_lon_deg(ra_deg: float, dec_deg: float, jd: float) -> float:
-    # This is only a coordinate rotation; it does not assume a heliocentric orbit.
+    # Coordinate rotation only.  It introduces no heliocentric orbit model.
     ra = math.radians(ra_deg)
     dec = math.radians(dec_deg)
     eps = math.radians(mean_obliquity_deg(jd))
@@ -142,66 +131,69 @@ def jd_to_iso(jd: float) -> tuple[str, str]:
     return dt.strftime("%Y-%m-%d"), dt.strftime("%Y-%m-%dT%H:%M:%S")
 
 
+def is_mars_name(value: str) -> bool:
+    normalized = " ".join(value.strip().casefold().split())
+    return normalized == "mars" or normalized.startswith("mars ")
+
+
+def fetch_mars_rows() -> list[dict[str, str]]:
+    # Exact name is expected.  A wildcard retry makes this robust to a catalogue
+    # suffix such as "Mars ..." without admitting similarly named minor planets.
+    for constraint in ("Mars", "Mars*"):
+        rows = parse_asu_tsv(download_query(constraint))
+        mars = [row for row in rows if is_mars_name(row.get("Name", ""))]
+        if mars:
+            print("Mars names:", sorted({row.get("Name", "") for row in mars}))
+            return mars
+        print(f"Name={constraint!r}: {len(rows)} returned rows, none identified as Mars")
+    raise RuntimeError("VizieR I/256/planet returned no Mars observations")
+
+
 def main() -> None:
+    mars_rows = fetch_mars_rows()
     output: list[dict[str, str]] = []
 
-    for catalog in CATALOGS:
-        raw = download_gzip(catalog)
-        if raw is None:
-            continue
-        parsed = [p for line in raw.splitlines() if (p := parse_planet_line(line)) is not None]
-        mars = [p for p in parsed if p["planet"] == MARS_CMC_CODE]
-        codes = sorted({int(p["planet"]) for p in parsed})
-        if not mars:
-            print(f"{catalog['volume']}: 0 Mars rows; parsed {len(parsed)} rows; last codes={codes[-12:]}")
-            continue
+    for row in mars_rows:
+        jd = float(row["TT"])
+        ra_deg = parse_hms(row["RA"])
+        dec_deg = parse_dms(row["DE"])
+        lon_deg = equatorial_to_ecliptic_lon_deg(ra_deg, dec_deg, jd)
+        date, timestamp = jd_to_iso(jd)
+        output.append(
+            {
+                "date": date,
+                "timestamp_tt": timestamp,
+                "tt_jd": f"{jd:.8f}",
+                "ra_deg": f"{ra_deg:.10f}",
+                "dec_deg": f"{dec_deg:.10f}",
+                "ecliptic_lon_deg": f"{lon_deg:.10f}",
+                "quality_flag": row.get("flag", "").strip(),
+                "cmc_number": row.get("CMC", "").strip(),
+                "source_catalog": "VizieR I/256/planet (Carlsberg Meridian Catalogues 1-11)",
+            }
+        )
 
-        mars.sort(key=lambda r: float(r["jd"]))
-        first_date = jd_to_iso(float(mars[0]["jd"]))[0]
-        last_date = jd_to_iso(float(mars[-1]["jd"]))[0]
-        print(f"{catalog['volume']}: {len(mars)} Mars rows, {first_date} .. {last_date}")
+    # Remove exact duplicate epochs if the compound catalogue contains them.
+    by_jd = {row["tt_jd"]: row for row in output}
+    output = sorted(by_jd.values(), key=lambda row: float(row["tt_jd"]))
+    if len(output) < 20:
+        raise RuntimeError(f"too few Mars observations: {len(output)}")
 
-        for row in mars:
-            jd = float(row["jd"])
-            ra_deg = float(row["ra_deg"])
-            dec_deg = float(row["dec_deg"])
-            lon_deg = equatorial_to_ecliptic_lon_deg(ra_deg, dec_deg, jd)
-            date, timestamp = jd_to_iso(jd)
-            output.append(
-                {
-                    "date": date,
-                    "timestamp_tdt": timestamp,
-                    "tdt_jd": f"{jd:.6f}",
-                    "ra_deg": f"{ra_deg:.10f}",
-                    "dec_deg": f"{dec_deg:.10f}",
-                    "ecliptic_lon_deg": f"{lon_deg:.10f}",
-                    "quality_flag": str(row["flag"]),
-                    "cmc_object_code": str(MARS_CMC_CODE),
-                    "source_volume": str(catalog["volume"]),
-                    "source_catalog": str(catalog["catalog"]),
-                }
-            )
-
-    if not output:
-        raise RuntimeError("no Carlsberg Mars observations were found")
-
-    # Deduplicate exact repeated timestamps in cumulative/overlapping releases,
-    # preferring the later volume in CATALOGS (dict assignment replaces earlier rows).
-    by_jd: dict[str, dict[str, str]] = {}
-    for row in output:
-        by_jd[row["tdt_jd"]] = row
-    output = sorted(by_jd.values(), key=lambda r: float(r["tdt_jd"]))
+    baseline = float(output[-1]["tt_jd"]) - float(output[0]["tt_jd"])
+    if baseline < MIN_BASELINE_DAYS:
+        raise RuntimeError(
+            f"Carlsberg Mars baseline is only {baseline:.1f} days; at least {MIN_BASELINE_DAYS:.0f} required"
+        )
 
     OUT.parent.mkdir(parents=True, exist_ok=True)
-    with OUT.open("w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=list(output[0].keys()))
+    with OUT.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(handle, fieldnames=list(output[0].keys()))
         writer.writeheader()
         writer.writerows(output)
 
-    good = sum(1 for r in output if r["quality_flag"] != "*")
-    volumes = sorted({r["source_volume"] for r in output})
-    print(f"wrote {len(output)} Carlsberg Mars observations ({good} unflagged) from {volumes} to {OUT}")
-    print(f"combined range: {output[0]['timestamp_tdt']} .. {output[-1]['timestamp_tdt']}")
+    good = sum(1 for row in output if row["quality_flag"] != "*")
+    print(f"wrote {len(output)} Mars observations ({good} unflagged) to {OUT}")
+    print(f"range: {output[0]['timestamp_tt']} .. {output[-1]['timestamp_tt']} ({baseline:.1f} days)")
 
 
 if __name__ == "__main__":
