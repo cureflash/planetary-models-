@@ -11,7 +11,7 @@ const THEORIES = [
     historicalFile: '../models/ptolemy/05-almagest-mars.js',
   },
   { id: 'tycho', label: 'ティコ・ブラーエ', files: ['../models/tycho/01-geoheliocentric-circles.js'] },
-  { id: 'copernicus', label: 'コペルニクス', files: ['../models/copernicus/01-heliocentric-circles.js'] },
+  { id: 'copernicus', label: 'コペルニクス', files: ['../models/copernicus/01-heliocentric-circles.js', '../models/copernicus/02-eccentric-epicycles.js'] },
   { id: 'kepler', label: 'ケプラー', files: ['../models/kepler/01-elliptic-orbits.js'] },
 ];
 
@@ -30,7 +30,7 @@ const OBSERVATION_MODEL = {
 let reference = [];
 let theoryIndex = 0;
 let stageIndex = 0;
-let ptolemyMode = 'fitted';
+let ptolemyMode = window.__PTOLEMY_FIT_MODE__ || 'w2j00';
 let currentModule = null;
 let currentPredictions = [];
 let selectedIndex = 0;
@@ -131,8 +131,12 @@ async function switchTheory(newTheoryIndex) {
 }
 
 async function setPtolemyMode(mode) {
-  if (!['fitted', 'almagest'].includes(mode) || ptolemyMode === mode) return;
+  if (!['w2j00', 'jpl', 'almagest'].includes(mode) || ptolemyMode === mode) return;
   ptolemyMode = mode;
+  window.__PTOLEMY_FIT_MODE__ = mode;
+  const url = new URL(window.location.href);
+  url.searchParams.set('pfit', mode);
+  window.history.replaceState(null, '', url);
   stageIndex = 0;
   updatePtolemyControls();
   await switchModel(0);

@@ -10,6 +10,9 @@ const R = 1.0;
 const [ECCENTRICITY_DISTANCE, APSIS_ANGLE, EQUANT_PHASE, EPICYCLE_RADIUS, EPICYCLE_PHASE] =
   PTOLEMY_FIT.models.equant.parameters;
 const stats = PTOLEMY_FIT.models.equant.stats;
+const fitLabel = PTOLEMY_FIT.source?.catalog === 'USNO W2J00 Transit Circle Catalog'
+  ? 'USNO W2J00実観測'
+  : 'JPL計算基準値 2020–2030';
 
 export const model = {
   id: 'equant',
@@ -17,8 +20,8 @@ export const model = {
   name: '周転円＋離心円＋エカント',
   shortName: 'エカント',
   sourceFile: 'models/ptolemy/04-equant.js',
-  description: '周転円と離心円にエカントを追加します。USNO W2J00の火星実観測に各パラメータを合わせています。',
-  elements: ['周転円', '離心円', 'エカント', 'USNO W2J00実観測で評価'],
+  description: `周転円と離心円にエカントを追加します。${fitLabel}に各パラメータを合わせています。`,
+  elements: ['周転円', '離心円', 'エカント', `${fitLabel}で評価`],
   fittedStats: { maeDeg: stats.mae_deg, rmsDeg: stats.rms_deg, maxAbsDeg: stats.max_abs_deg },
 };
 

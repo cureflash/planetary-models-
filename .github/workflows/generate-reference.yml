@@ -11,6 +11,7 @@ on:
       - "js/data-bootstrap.js"
       - "js/observation-frames.js"
       - "models/ptolemy/**"
+      - "models/copernicus/**"
       - "index.html"
       - ".github/workflows/generate-reference.yml"
   pull_request:
@@ -23,6 +24,7 @@ on:
       - "js/data-bootstrap.js"
       - "js/observation-frames.js"
       - "models/ptolemy/**"
+      - "models/copernicus/**"
       - "index.html"
       - ".github/workflows/generate-reference.yml"
   workflow_dispatch:
@@ -64,6 +66,8 @@ jobs:
           node --check models/ptolemy/fitted-parameters.js
           node --check models/ptolemy/fitted-parameters-w2j00.js
           node --check models/ptolemy/fitted-parameters-jpl.js
+          node --check models/copernicus/01-heliocentric-circles.js
+          node --check models/copernicus/02-eccentric-epicycles.js
 
       - name: Verify restored JPL reference data
         run: |
