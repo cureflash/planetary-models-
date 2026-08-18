@@ -12,7 +12,7 @@
     <header class="hero">
       <p class="eyebrow">PLANETARY MODELS / MARS</p>
       <h1>Planetary Models</h1>
-      <p class="lead">火星の見かけの運動を、プトレマイオス、ティコ、コペルニクス、ケプラーのモデルで同じ基準データと比較する。</p>
+      <p class="lead">火星の見かけの運動を、プトレマイオス、ティコ、コペルニクス、ケプラーのモデルで現代基準軌道と比較する。</p>
     </header>
 
     <nav class="theory-tabs" aria-label="天文学モデル">
@@ -37,25 +37,39 @@
       <p class="source-line">現在実行中のプログラム: <code id="sourceFile"></code></p>
     </section>
 
-    <section class="grid main-grid">
+    <section class="grid orbit-compare-grid">
       <article class="card visual-card">
         <div class="section-head">
-          <div><span class="kicker">GEOMETRY</span><h3>モデルの幾何図</h3></div>
-          <span id="dateLabel" class="mono"></span>
+          <div><span class="kicker">MODEL</span><h3>歴史モデルの軌道・幾何</h3></div>
         </div>
         <canvas id="orbitCanvas" aria-label="選択中の惑星モデルの幾何図"></canvas>
-        <input id="dateSlider" type="range" min="0" max="1" value="0" step="1" aria-label="日付">
       </article>
 
-      <article class="card readings">
-        <div class="section-head"><div><span class="kicker">SAME DAY</span><h3>同じ日の比較</h3></div></div>
-        <dl>
-          <div><dt>モデル予測</dt><dd id="predictedLongitude">—</dd></div>
-          <div><dt>JPL由来基準値</dt><dd id="referenceLongitude">—</dd></div>
-          <div><dt>角度誤差</dt><dd id="angularError">—</dd></div>
-        </dl>
-        <p class="note">角度はJ2000黄道面上の地心黄経。緑の破線は基準データの方向です。</p>
+      <article class="card visual-card reference-card">
+        <div class="section-head">
+          <div><span class="kicker">MODERN REFERENCE</span><h3>現代基準の地球・火星軌道</h3></div>
+        </div>
+        <canvas id="referenceOrbitCanvas" aria-label="JPL由来の地球と火星の太陽中心軌道"></canvas>
+        <p class="note">JPLの1800–2050年用近似式から計算した太陽中心座標。地球は正確にはEarth–Moon barycenterです。</p>
       </article>
+    </section>
+
+    <section class="card date-control">
+      <div class="date-control-head">
+        <span class="kicker">SAME DAY</span>
+        <strong id="dateLabel" class="mono"></strong>
+      </div>
+      <input id="dateSlider" type="range" min="0" max="1" value="0" step="1" aria-label="日付">
+    </section>
+
+    <section class="card readings">
+      <div class="section-head"><div><span class="kicker">APPARENT POSITION</span><h3>地球から見た火星の方向</h3></div></div>
+      <dl>
+        <div><dt>モデル予測</dt><dd id="predictedLongitude">—</dd></div>
+        <div><dt>JPL由来基準値</dt><dd id="referenceLongitude">—</dd></div>
+        <div><dt>角度誤差</dt><dd id="angularError">—</dd></div>
+      </dl>
+      <p class="note">角度はJ2000黄道面上の地心黄経。軌道図だけでなく、同じ日の見かけ方向と全期間誤差も比較します。</p>
     </section>
 
     <section class="card chart-card">
@@ -74,9 +88,9 @@
     <section class="card methodology">
       <span class="kicker">METHOD</span>
       <h3>このページで何を比較しているか</h3>
-      <p>各体系の計算は別々のJavaScriptプログラムです。共通UIは選択されたプログラムを読み込み、同じ2020–2030年の火星基準データに対する地心黄経の誤差を計算します。</p>
-      <p>プトレマイオスは4段階を独立ファイルで比較します。ティコとコペルニクスは等速円運動の簡略モデルで、座標系の置き方は異なりますが火星の見かけ方向について同じ予測になります。ケプラーは楕円軌道とケプラー方程式を使い、軌道上の速度変化を含めます。</p>
-      <p>比較基準はJPL Solar System Dynamicsが公開する1800–2050年用の惑星位置近似式から生成した日次データです。各歴史モデルの定数は現代のJ2000値または2020–2030年へのフィット値を使い、モデル構造そのものの差を見やすくしています。</p>
+      <p>左側は選択した歴史モデルが想定する軌道・幾何、右側はJPL Solar System Dynamicsの近似式から計算した同時期の地球・火星の太陽中心軌道です。日付スライダーを動かすと、両方の天体位置が同じ日にそろいます。</p>
+      <p>各体系の計算は別々のJavaScriptプログラムです。プトレマイオスは4段階を独立ファイルで比較し、ティコとコペルニクスは等速円運動、ケプラーは楕円軌道とケプラー方程式を使います。</p>
+      <p>軌道図はモデルの構造を見るための比較です。定量評価は、地球から見た火星の地心黄経を同じ2020–2030年の基準データと比較したMAE・RMS・最大誤差で行います。</p>
     </section>
   </main>
   <script type="module" src="./js/app.js"></script>
