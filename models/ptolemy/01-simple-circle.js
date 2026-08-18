@@ -1,11 +1,12 @@
-// Model 1: uniform circular motion centered on Earth.
-// Complete independent prediction program for this stage.
+import { PTOLEMY_FIT } from './fitted-parameters.js';
 
-const EPOCH_JD = 2458849.5; // 2020-01-01
-const MARS_PERIOD_DAYS = 686.97959;
+// Model 1: uniform circular motion centered on Earth.
+const EPOCH_JD = PTOLEMY_FIT.constants.epoch_jd;
+const MARS_PERIOD_DAYS = PTOLEMY_FIT.constants.mars_period_days;
 const OMEGA = 2 * Math.PI / MARS_PERIOD_DAYS;
-const PHASE = 3.92741138;
+const [PHASE] = PTOLEMY_FIT.models.simple_circle.parameters;
 const R = 1.0;
+const stats = PTOLEMY_FIT.models.simple_circle.stats;
 
 export const model = {
   id: 'simple-circle',
@@ -13,9 +14,9 @@ export const model = {
   name: '単純な円運動',
   shortName: '単純円',
   sourceFile: 'models/ptolemy/01-simple-circle.js',
-  description: '地球を中心に、火星が一定角速度で円運動すると仮定します。離心円・周転円・エカントは使いません。',
-  elements: ['地球中心', '一様円運動'],
-  fittedStats: { maeDeg: 28.3227, rmsDeg: 31.5563, maxAbsDeg: 53.7904 },
+  description: '地球を中心に、火星が一定角速度で円運動すると仮定します。離心円・周転円・エカントは使いません。Carlsbergの実観測火星位置に位相を合わせています。',
+  elements: ['地球中心', '一様円運動', 'Carlsberg実観測で評価'],
+  fittedStats: { maeDeg: stats.mae_deg, rmsDeg: stats.rms_deg, maxAbsDeg: stats.max_abs_deg },
 };
 
 function normalizeDeg(deg) {
