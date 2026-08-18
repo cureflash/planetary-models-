@@ -8,7 +8,7 @@ import numpy as np
 from scipy.optimize import differential_evolution, least_squares
 
 ROOT = Path(__file__).resolve().parents[1]
-DATA = ROOT / "data" / "mars_observations_carlsberg_cmc4_1984_1988.csv"
+DATA = ROOT / "data" / "mars_observations_carlsberg.csv"
 OUT = ROOT / "data" / "ptolemy_mars_fitted_parameters.json"
 JS_OUT = ROOT / "models" / "ptolemy" / "fitted-parameters.js"
 
@@ -87,14 +87,15 @@ models = [
     ),
 ]
 
+volumes = sorted({r.get("source_volume", "") for r in good_rows if r.get("source_volume", "")})
 result = {
     "source": {
-        "catalog": "CDS I/147 table2.dat",
-        "name": "Carlsberg Meridian Catalog Vol. 4 (CMC4)",
+        "catalog": "Carlsberg Meridian Catalog individual planet-observation tables",
+        "volumes": volumes,
         "target": "Mars (CMC code 99040)",
         "observations_total": len(rows),
         "observations_used": len(good_rows),
-        "filter": "exclude meFlag='*' (high internal mean error)",
+        "filter": "exclude quality_flag='*' (high internal mean error)",
         "coordinate": "apparent geocentric RA/Dec of date, converted to ecliptic longitude for model comparison",
     },
     "constants": {
@@ -145,7 +146,7 @@ for name, fn, bounds in models:
     print(name, p, stats)
 
 OUT.write_text(json.dumps(result, indent=2), encoding="utf-8")
-js = "// Auto-generated from Carlsberg CMC4 Mars observations by tools/fit_ptolemy_models.py.\n"
+js = "// Auto-generated from Carlsberg Mars observations by tools/fit_ptolemy_models.py.\n"
 js += "export const PTOLEMY_FIT = " + json.dumps(result, ensure_ascii=False, indent=2) + ";\n"
 JS_OUT.write_text(js, encoding="utf-8")
 
