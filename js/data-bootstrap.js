@@ -2,6 +2,10 @@ const params = new URLSearchParams(window.location.search);
 const dataset = params.get('dataset') === 'jpl' ? 'jpl' : 'w2j00';
 window.__PLANETARY_DATASET__ = dataset;
 
+function setText(element, value) {
+  if (element && element.textContent !== value) element.textContent = value;
+}
+
 const datasetButtons = [...document.querySelectorAll('[data-dataset]')];
 datasetButtons.forEach(button => {
   const active = button.dataset.dataset === dataset;
@@ -35,40 +39,53 @@ function replaceJplText(value) {
 
 function normalizeJplLabels() {
   if (dataset !== 'jpl') return;
-  if (firstTheoryTab) firstTheoryTab.textContent = 'JPL計算基準値';
+  setText(firstTheoryTab, 'JPL計算基準値');
+
   const description = document.querySelector('#modelDescription');
   if (description) {
-    description.textContent = replaceJplText(description.textContent)
-      .replaceAll('実際に辿った', '計算上の')
-      .replaceAll('火星観測データ', 'JPL火星計算基準値');
+    setText(
+      description,
+      replaceJplText(description.textContent)
+        .replaceAll('実際に辿った', '計算上の')
+        .replaceAll('火星観測データ', 'JPL火星計算基準値')
+    );
   }
+
   document.querySelectorAll('#modelElements span').forEach(span => {
-    span.textContent = replaceJplText(span.textContent).replaceAll('観測データ', 'JPL計算基準値');
+    setText(span, replaceJplText(span.textContent).replaceAll('観測データ', 'JPL計算基準値'));
   });
+
   const orbitNote = document.querySelector('#orbitNote');
-  if (orbitNote) orbitNote.textContent = replaceJplText(orbitNote.textContent).replaceAll('実際に辿った', '計算上の');
+  if (orbitNote) setText(orbitNote, replaceJplText(orbitNote.textContent).replaceAll('実際に辿った', '計算上の'));
+
   const chartTitle = document.querySelector('#chartTitle');
-  if (chartTitle) chartTitle.textContent = replaceJplText(chartTitle.textContent).replaceAll('観測データ', 'JPL計算基準値');
+  if (chartTitle) setText(chartTitle, replaceJplText(chartTitle.textContent).replaceAll('観測データ', 'JPL計算基準値'));
+
   const referenceTerm = document.querySelector('#referenceTerm');
-  if (referenceTerm) referenceTerm.textContent = replaceJplText(referenceTerm.textContent);
+  if (referenceTerm) setText(referenceTerm, replaceJplText(referenceTerm.textContent));
+
   const modelName = document.querySelector('#modelName');
-  if (modelName?.textContent === '地球固定・火星観測データ') modelName.textContent = '地球固定・JPL火星計算基準値';
+  if (modelName?.textContent === '地球固定・火星観測データ') setText(modelName, '地球固定・JPL火星計算基準値');
+
   const stage = document.querySelector('#stageLabel');
-  if (stage?.textContent === 'OBSERVATION / GEOCENTRIC') stage.textContent = 'JPL / COMPUTED GEOCENTRIC';
+  if (stage?.textContent === 'OBSERVATION / GEOCENTRIC') setText(stage, 'JPL / COMPUTED GEOCENTRIC');
+
   const orbitKicker = document.querySelector('#orbitKicker');
-  if (orbitKicker?.textContent === 'OBSERVED MOTION') orbitKicker.textContent = 'COMPUTED REFERENCE';
+  if (orbitKicker?.textContent === 'OBSERVED MOTION') setText(orbitKicker, 'COMPUTED REFERENCE');
+
   const orbitTitle = document.querySelector('#orbitTitle');
-  if (orbitTitle?.textContent === '地球を固定した火星の動き') orbitTitle.textContent = '地球を固定したJPL計算上の火星の動き';
+  if (orbitTitle?.textContent === '地球を固定した火星の動き') setText(orbitTitle, '地球を固定したJPL計算上の火星の動き');
 }
 
 if (dataset === 'jpl') {
   if (observationFramePanel) observationFramePanel.hidden = true;
-  if (firstTheoryTab) firstTheoryTab.textContent = 'JPL計算基準値';
-  if (lead) lead.textContent = 'JPLの近似惑星位置用軌道要素から計算した2020–2030年の火星基準値と、プトレマイオス、ティコ、コペルニクス、ケプラーのモデルを比較する。';
-  if (fittedButton) fittedButton.textContent = 'JPL計算値フィット';
-  if (ptolemyPanelText) ptolemyPanelText.textContent = '同じプトレマイオス型の幾何を、JPL計算基準値へのフィット値と『アルマゲスト』の史実値で切り替えます。';
-  if (readingsNote) readingsNote.textContent = 'このモードの火星位置・地心黄経・距離はJPLの近似惑星軌道要素から計算した基準値です。望遠鏡による実観測値ではありません。';
-  if (dateKicker) dateKicker.textContent = 'REFERENCE DATE';
+  setText(firstTheoryTab, 'JPL計算基準値');
+  setText(lead, 'JPLの近似惑星位置用軌道要素から計算した2020–2030年の火星基準値と、プトレマイオス、ティコ、コペルニクス、ケプラーのモデルを比較する。');
+  setText(fittedButton, 'JPL計算値フィット');
+  setText(ptolemyPanelText, '同じプトレマイオス型の幾何を、JPL計算基準値へのフィット値と『アルマゲスト』の史実値で切り替えます。');
+  setText(readingsNote, 'このモードの火星位置・地心黄経・距離はJPLの近似惑星軌道要素から計算した基準値です。望遠鏡による実観測値ではありません。');
+  setText(dateKicker, 'REFERENCE DATE');
+
   if (methodology) {
     methodology.innerHTML = `
       <span class="kicker">METHOD</span>
@@ -78,12 +95,13 @@ if (dataset === 'jpl') {
       <p>このモードでは距離と太陽中心座標も計算値として持つため、地球固定の見かけの軌跡だけでなく、太陽中心の地球・火星位置も表示できます。</p>
       <p>プトレマイオスの「フィット」は、この2020–2030年計算基準値に合わせて以前求めたパラメータへ自動的に切り替わります。USNO W2J00モードではW2J00実観測へのフィット値へ戻ります。</p>`;
   }
+
   const observer = new MutationObserver(normalizeJplLabels);
   observer.observe(document.querySelector('#app'), { subtree: true, childList: true, characterData: true });
-  await import('./app-v3.js?v=jpl-dataset-4');
+  await import('./app-v3.js?v=jpl-dataset-5');
   normalizeJplLabels();
 } else {
-  if (firstTheoryTab) firstTheoryTab.textContent = 'USNO W2J00実観測';
-  await import('./app-v5.js?v=w2j00-dataset-4');
-  await import('./observation-frames.js?v=w2j00-dataset-4');
+  setText(firstTheoryTab, 'USNO W2J00実観測');
+  await import('./app-v5.js?v=w2j00-dataset-5');
+  await import('./observation-frames.js?v=w2j00-dataset-5');
 }
