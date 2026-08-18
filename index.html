@@ -12,17 +12,17 @@
     <header class="hero">
       <p class="eyebrow">PLANETARY MODELS / MARS</p>
       <h1>Planetary Models</h1>
-      <p class="lead">火星の見かけの運動を、歴史上の惑星モデルごとに観測データと比較する。</p>
+      <p class="lead">火星の見かけの運動を、プトレマイオス、ティコ、コペルニクス、ケプラーのモデルで同じ基準データと比較する。</p>
     </header>
 
     <nav class="theory-tabs" aria-label="天文学モデル">
-      <button class="theory-tab active" aria-current="page">プトレマイオス</button>
-      <button class="theory-tab" disabled title="今後追加予定">ティコ・ブラーエ</button>
-      <button class="theory-tab" disabled title="今後追加予定">コペルニクス</button>
-      <button class="theory-tab" disabled title="今後追加予定">ケプラー</button>
+      <button class="theory-tab active" data-theory="ptolemy" aria-current="page">プトレマイオス</button>
+      <button class="theory-tab" data-theory="tycho">ティコ・ブラーエ</button>
+      <button class="theory-tab" data-theory="copernicus">コペルニクス</button>
+      <button class="theory-tab" data-theory="kepler">ケプラー</button>
     </nav>
 
-    <section class="model-switcher" aria-label="プトレマイオスモデルの段階切り替え">
+    <section class="model-switcher" aria-label="モデルの段階切り替え">
       <button id="prevModel" class="arrow" aria-label="前のモデル">←</button>
       <div class="model-heading">
         <span id="stageLabel" class="stage">STAGE 1 / 4</span>
@@ -40,10 +40,10 @@
     <section class="grid main-grid">
       <article class="card visual-card">
         <div class="section-head">
-          <div><span class="kicker">GEOMETRY</span><h3>天動説モデル</h3></div>
+          <div><span class="kicker">GEOMETRY</span><h3>モデルの幾何図</h3></div>
           <span id="dateLabel" class="mono"></span>
         </div>
-        <canvas id="orbitCanvas" aria-label="天動説モデルの幾何図"></canvas>
+        <canvas id="orbitCanvas" aria-label="選択中の惑星モデルの幾何図"></canvas>
         <input id="dateSlider" type="range" min="0" max="1" value="0" step="1" aria-label="日付">
       </article>
 
@@ -73,9 +73,10 @@
 
     <section class="card methodology">
       <span class="kicker">METHOD</span>
-      <h3>このページで何を検証しているか</h3>
-      <p>プトレマイオス欄の4段階は別々のJavaScriptプログラムです。左右ボタンを押すと、共通UIが別のモデルファイルを読み込み、そのプログラムで火星位置を再計算します。</p>
-      <p>比較基準はJPL Solar System Dynamicsが公開する1800–2050年用の惑星位置近似式から生成した2020–2030年の日次データです。高精度の実天体暦そのものではなく、再現可能な教育用基準データとして使用しています。</p>
+      <h3>このページで何を比較しているか</h3>
+      <p>各体系の計算は別々のJavaScriptプログラムです。共通UIは選択されたプログラムを読み込み、同じ2020–2030年の火星基準データに対する地心黄経の誤差を計算します。</p>
+      <p>プトレマイオスは4段階を独立ファイルで比較します。ティコとコペルニクスは等速円運動の簡略モデルで、座標系の置き方は異なりますが火星の見かけ方向について同じ予測になります。ケプラーは楕円軌道とケプラー方程式を使い、軌道上の速度変化を含めます。</p>
+      <p>比較基準はJPL Solar System Dynamicsが公開する1800–2050年用の惑星位置近似式から生成した日次データです。各歴史モデルの定数は現代のJ2000値または2020–2030年へのフィット値を使い、モデル構造そのものの差を見やすくしています。</p>
     </section>
   </main>
   <script type="module" src="./js/app.js"></script>
