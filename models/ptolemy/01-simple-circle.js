@@ -7,6 +7,9 @@ const OMEGA = 2 * Math.PI / MARS_PERIOD_DAYS;
 const [PHASE] = PTOLEMY_FIT.models.simple_circle.parameters;
 const R = 1.0;
 const stats = PTOLEMY_FIT.models.simple_circle.stats;
+const fitLabel = PTOLEMY_FIT.source?.catalog === 'USNO W2J00 Transit Circle Catalog'
+  ? 'USNO W2J00実観測'
+  : 'JPL計算基準値 2020–2030';
 
 export const model = {
   id: 'simple-circle',
@@ -14,8 +17,8 @@ export const model = {
   name: '単純な円運動',
   shortName: '単純円',
   sourceFile: 'models/ptolemy/01-simple-circle.js',
-  description: '地球を中心に、火星が一定角速度で円運動すると仮定します。離心円・周転円・エカントは使いません。USNO W2J00の火星実観測に位相を合わせています。',
-  elements: ['地球中心', '一様円運動', 'USNO W2J00実観測で評価'],
+  description: `地球を中心に、火星が一定角速度で円運動すると仮定します。離心円・周転円・エカントは使いません。${fitLabel}に位相を合わせています。`,
+  elements: ['地球中心', '一様円運動', `${fitLabel}で評価`],
   fittedStats: { maeDeg: stats.mae_deg, rmsDeg: stats.rms_deg, maxAbsDeg: stats.max_abs_deg },
 };
 

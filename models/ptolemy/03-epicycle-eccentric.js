@@ -10,6 +10,9 @@ const R = 1.0;
 const [ECCENTRICITY_DISTANCE, APSIS_ANGLE, DEFERENT_PHASE, EPICYCLE_RADIUS, EPICYCLE_PHASE] =
   PTOLEMY_FIT.models.epicycle_eccentric.parameters;
 const stats = PTOLEMY_FIT.models.epicycle_eccentric.stats;
+const fitLabel = PTOLEMY_FIT.source?.catalog === 'USNO W2J00 Transit Circle Catalog'
+  ? 'USNO W2J00実観測'
+  : 'JPL計算基準値 2020–2030';
 
 export const model = {
   id: 'epicycle-eccentric',
@@ -17,8 +20,8 @@ export const model = {
   name: '周転円＋離心円',
   shortName: '離心円',
   sourceFile: 'models/ptolemy/03-epicycle-eccentric.js',
-  description: '周転円モデルに離心円を追加し、従円の中心を地球からずらします。USNO W2J00の火星実観測に各パラメータを合わせています。',
-  elements: ['周転円', '離心円', '一様円運動', 'USNO W2J00実観測で評価'],
+  description: `周転円モデルに離心円を追加し、従円の中心を地球からずらします。${fitLabel}に各パラメータを合わせています。`,
+  elements: ['周転円', '離心円', '一様円運動', `${fitLabel}で評価`],
   fittedStats: { maeDeg: stats.mae_deg, rmsDeg: stats.rms_deg, maxAbsDeg: stats.max_abs_deg },
 };
 

@@ -49,10 +49,11 @@
     <section id="ptolemyParameterPanel" class="parameter-switch card" aria-label="プトレマイオスのパラメータセット" hidden>
       <div>
         <span class="kicker">PTOLEMY PARAMETER SET</span>
-        <p>同じプトレマイオス型の幾何を、USNO W2J00実観測へのフィット値と『アルマゲスト』の史実値で切り替えます。</p>
+        <p>比較データとは独立に、W2J00フィット・JPL計算値フィット・『アルマゲスト』史実値を選びます。データを切り替えてもパラメータは勝手に変わりません。</p>
       </div>
       <div class="segmented" role="group" aria-label="パラメータセット">
-        <button class="parameter-button active" data-ptolemy-mode="fitted" aria-pressed="true">USNO W2J00フィット</button>
+        <button class="parameter-button active" data-ptolemy-mode="w2j00" aria-pressed="true">USNO W2J00フィット</button>
+        <button class="parameter-button" data-ptolemy-mode="jpl" aria-pressed="false">JPL計算値フィット</button>
         <button class="parameter-button" data-ptolemy-mode="almagest" aria-pressed="false">アルマゲスト史実値</button>
       </div>
     </section>
@@ -122,10 +123,10 @@
       <p>実際の観測は連続していません。最長の欠測は1989年1月27日から1990年9月2日まで約582.5日あります。そこで35日を超える空白は別の観測区間として扱い、観測していない日の位置を補間・生成しません。</p>
       <p>「天動説表示・地球固定」では、観測された方向だけを地球中心の一定半径上に描きます。この半径は表示用であり、物理的な火星軌道ではありません。</p>
       <p>「地動説表示・太陽固定」では、太陽を中央に固定し、日付から求めた太陽黄経の近似を使って地球位置を置き、各W2J00観測を地球から伸びる実測視線として描きます。ここでも火星の距離は仮定せず、火星の太陽中心位置そのものを実測値として捏造しません。</p>
-      <p>緑はUSNO W2J00実観測、赤は選択中モデルです。プトレマイオスのW2J00フィットは、単純円 → 周転円 → 周転円＋離心円 → 周転円＋離心円＋エカントの順で、同じ623観測点への角度誤差を評価します。</p>
+      <p>緑はUSNO W2J00実観測、赤は選択中モデルです。プトレマイオスのパラメータセットは比較データとは独立に選べます。W2J00で合わせた固定値をJPL計算値へぶつける、またはその逆の比較もできます。</p>
       <p>画面で使う地心黄経は、観測された赤経・赤緯を黄道座標へ回転して求めたものです。この座標変換自体には太陽中心の火星軌道モデルを使っていません。</p>
     </section>
   </main>
-  <script type="module" src="./js/data-bootstrap.js?v=dataset-switch-2"></script>
+  <script type="module" src="./js/data-bootstrap.js?v=dataset-switch-3"></script>
 </body>
 </html>
