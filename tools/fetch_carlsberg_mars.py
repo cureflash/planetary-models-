@@ -10,10 +10,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "data" / "mars_observations_carlsberg.csv"
 MIN_BASELINE_DAYS = 730.0
+MARS_COMPOSITE_CMC_CODE = "9000040"
 
 # Carlsberg Meridian Catalogues 1-11 composite catalogue, solar-system table.
-# The raw table is preferable to VizieR's form query here because the latter
-# returns an empty result for Name=Mars even though planet.dat contains the rows.
 RAW_URLS = [
     "https://vizier.cfa.harvard.edu/ftp/cats/I/256/planet.dat.gz",
     "https://cdsarc.cds.unistra.fr/ftp/cats/I/256/planet.dat.gz",
@@ -47,10 +46,6 @@ def download_planet_table() -> str:
 
 
 def parse_planet_line(line: str) -> dict[str, str | float] | None:
-    # Byte positions are from the CDS/VizieR I/256 ReadMe (1-based there):
-    # 2-8 CMC, 13-16 MP, 19-30 Name, 33-46 TT, 47 flag,
-    # 51-52 RAh, 54-55 RAm, 57-62 RAs, 65 sign,
-    # 66-67 DEd, 69-70 DEm, 72-76 DEs, 79-83 Vmag.
     if len(line) < 76:
         return None
     try:
@@ -94,7 +89,6 @@ def mean_obliquity_deg(jd: float) -> float:
 
 
 def equatorial_to_ecliptic_lon_deg(ra_deg: float, dec_deg: float, jd: float) -> float:
-    # Coordinate rotation only. No heliocentric orbit model is introduced.
     ra = math.radians(ra_deg)
     dec = math.radians(dec_deg)
     eps = math.radians(mean_obliquity_deg(jd))
@@ -112,18 +106,31 @@ def jd_to_iso(jd: float) -> tuple[str, str]:
     return dt.strftime("%Y-%m-%d"), dt.strftime("%Y-%m-%dT%H:%M:%S")
 
 
+def is_mars(row: dict[str, str | float]) -> bool:
+    name = str(row["name"]).strip().casefold()
+    cmc = str(row["cmc"]).strip()
+    return name == "mars" or cmc == MARS_COMPOSITE_CMC_CODE
+
+
 def main() -> None:
     raw = download_planet_table()
     parsed = [p for line in raw.splitlines() if (p := parse_planet_line(line)) is not None]
-    mars = [p for p in parsed if str(p["name"]).strip().casefold() == "mars"]
+    mars = [p for p in parsed if is_mars(p)]
+
+    # Diagnostic: the composite CMC numbering is the reliable identifier for
+    # bright planets, whose Name field may be blank in planet.dat.
+    suffix40 = [p for p in parsed if str(p["cmc"]).endswith("40")]
+    print(f"rows with CMC code ending 40: {len(suffix40)}")
+    if suffix40:
+        print("ending-40 identifiers:", sorted({(str(p["cmc"]), str(p["name"])) for p in suffix40})[:20])
 
     if not mars:
-        names = sorted({str(p["name"]).strip() for p in parsed if str(p["name"]).strip()})
-        raise RuntimeError(f"no Mars observations found; sample names={names[:80]}")
+        candidates = sorted({(str(p["cmc"]), str(p["name"])) for p in suffix40})
+        raise RuntimeError(f"no Mars observations found; ending-40 candidates={candidates[:80]}")
 
     mars.sort(key=lambda row: float(row["tt"]))
     print(f"raw Mars rows: {len(mars)}")
-    print("Mars CMC object codes:", sorted({str(row["cmc"]) for row in mars}))
+    print("Mars identifiers:", sorted({(str(row["cmc"]), str(row["name"])) for row in mars}))
 
     output: list[dict[str, str]] = []
     for row in mars:
@@ -135,9 +142,6 @@ def main() -> None:
         output.append(
             {
                 "date": date,
-                # Keep the pre-existing column names so the browser and fitter
-                # remain backward compatible. TT/TDT differ only by terminology
-                # for the purposes of this historical catalogue epoch field.
                 "timestamp_tdt": timestamp,
                 "tdt_jd": f"{jd:.6f}",
                 "ra_deg": f"{ra_deg:.10f}",
@@ -150,7 +154,6 @@ def main() -> None:
             }
         )
 
-    # A repeated epoch would add no independent information; keep one row.
     by_jd = {row["tdt_jd"]: row for row in output}
     output = sorted(by_jd.values(), key=lambda row: float(row["tdt_jd"]))
 
