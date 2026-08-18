@@ -8,7 +8,7 @@ import numpy as np
 from scipy.optimize import differential_evolution, least_squares
 
 ROOT = Path(__file__).resolve().parents[1]
-DATA = ROOT / "data" / "mars_observations_tokyo_pmc88.csv"
+DATA = ROOT / "data" / "mars_observations_carlsberg.csv"
 OUT = ROOT / "data" / "ptolemy_mars_fitted_parameters.json"
 JS_OUT = ROOT / "models" / "ptolemy" / "fitted-parameters.js"
 
@@ -21,11 +21,12 @@ WE = 2 * np.pi / EARTH_PERIOD
 
 rows = list(csv.DictReader(DATA.open(encoding="utf-8")))
 if len(rows) < 20:
-    raise RuntimeError(f"too few Tokyo PMC88 Mars observations: {len(rows)}")
+    raise RuntimeError(f"too few Carlsberg Mars observations: {len(rows)}")
 
-jd = np.array([float(r["jd_ut1"]) for r in rows])
+jd = np.array([float(r["jd_tt"]) for r in rows])
 obs = np.deg2rad(np.array([float(r["ecliptic_lon_deg"]) for r in rows]))
 t = jd - jd[0]
+gaps = np.diff(jd)
 
 
 def wrap(x):
@@ -88,14 +89,14 @@ models = [
 
 result = {
     "source": {
-        "catalog": "Tokyo Photoelectric Meridian Circle Catalog 1988",
-        "catalog_id": "CDS I/188",
-        "table": "planets",
+        "catalog": "Carlsberg Meridian Catalogs Number 1-11",
+        "catalog_id": "VizieR I/256",
+        "table": "I/256/planet",
         "target": "Mars",
         "observations_total": len(rows),
         "observations_used": len(rows),
-        "coordinate": "observed geocentric apparent RA/Dec of date, converted to ecliptic longitude for model comparison",
-        "time_scale": "UT1",
+        "coordinate": "observed apparent geocentric RA/Dec of date, converted to ecliptic longitude for model comparison",
+        "time_scale": "TT",
     },
     "constants": {
         "mars_period_days": MARS_PERIOD,
@@ -104,6 +105,7 @@ result = {
         "epoch_date": rows[0]["date"],
         "last_date": rows[-1]["date"],
         "baseline_days": float(jd[-1] - jd[0]),
+        "max_observation_gap_days": float(np.max(gaps)) if len(gaps) else 0.0,
     },
     "models": {},
 }
@@ -146,7 +148,7 @@ for name, fn, bounds in models:
     print(name, p, stats)
 
 OUT.write_text(json.dumps(result, indent=2), encoding="utf-8")
-js = "// Auto-generated from Tokyo PMC88 Mars observations by tools/fit_ptolemy_models.py.\n"
+js = "// Auto-generated from Carlsberg I/256 Mars observations by tools/fit_ptolemy_models.py.\n"
 js += "export const PTOLEMY_FIT = " + json.dumps(result, ensure_ascii=False, indent=2) + ";\n"
 JS_OUT.write_text(js, encoding="utf-8")
 
