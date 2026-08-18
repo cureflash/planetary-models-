@@ -1,4 +1,4 @@
-// Model 4: eccentric deferent + epicycle + equant.
+// Model 4: epicycle + eccentric deferent + equant.
 // Independent program: previous model files are not imported.
 
 const EPOCH_JD = 2458849.5;
@@ -17,11 +17,11 @@ const EPICYCLE_PHASE = 4.88197935;
 export const model = {
   id: 'equant',
   stage: 4,
-  name: '離心円＋周転円＋エカント',
+  name: '周転円＋離心円＋エカント',
   shortName: 'エカント',
   sourceFile: 'models/ptolemy/04-equant.js',
-  description: '離心円と周転円にエカントを追加します。周転円の中心は、エカントから見た角度が一定速度で増えるように離心円上を動きます。',
-  elements: ['離心円', '周転円', 'エカント'],
+  description: '周転円と離心円にエカントを追加します。周転円の中心は、エカントから見た角度が一定速度で増えるように離心円上を動きます。',
+  elements: ['周転円', '離心円', 'エカント'],
   fittedStats: { maeDeg: 0.2436, rmsDeg: 0.2971, maxAbsDeg: 0.9274 },
 };
 
