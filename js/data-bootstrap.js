@@ -21,6 +21,8 @@ const lead = document.querySelector('.hero .lead');
 const fittedButton = document.querySelector('[data-ptolemy-mode="fitted"]');
 const ptolemyPanelText = document.querySelector('#ptolemyParameterPanel p');
 const methodology = document.querySelector('.methodology');
+const readingsNote = document.querySelector('.readings .note');
+const dateKicker = document.querySelector('.date-control .kicker');
 
 function replaceJplText(value) {
   return String(value)
@@ -35,9 +37,13 @@ function normalizeJplLabels() {
   if (dataset !== 'jpl') return;
   if (firstTheoryTab) firstTheoryTab.textContent = 'JPL計算基準値';
   const description = document.querySelector('#modelDescription');
-  if (description) description.textContent = replaceJplText(description.textContent);
+  if (description) {
+    description.textContent = replaceJplText(description.textContent)
+      .replaceAll('実際に辿った', '計算上の')
+      .replaceAll('火星観測データ', 'JPL火星計算基準値');
+  }
   document.querySelectorAll('#modelElements span').forEach(span => {
-    span.textContent = replaceJplText(span.textContent);
+    span.textContent = replaceJplText(span.textContent).replaceAll('観測データ', 'JPL計算基準値');
   });
   const orbitNote = document.querySelector('#orbitNote');
   if (orbitNote) orbitNote.textContent = replaceJplText(orbitNote.textContent).replaceAll('実際に辿った', '計算上の');
@@ -61,6 +67,8 @@ if (dataset === 'jpl') {
   if (lead) lead.textContent = 'JPLの近似惑星位置用軌道要素から計算した2020–2030年の火星基準値と、プトレマイオス、ティコ、コペルニクス、ケプラーのモデルを比較する。';
   if (fittedButton) fittedButton.textContent = 'JPL計算値フィット';
   if (ptolemyPanelText) ptolemyPanelText.textContent = '同じプトレマイオス型の幾何を、JPL計算基準値へのフィット値と『アルマゲスト』の史実値で切り替えます。';
+  if (readingsNote) readingsNote.textContent = 'このモードの火星位置・地心黄経・距離はJPLの近似惑星軌道要素から計算した基準値です。望遠鏡による実観測値ではありません。';
+  if (dateKicker) dateKicker.textContent = 'REFERENCE DATE';
   if (methodology) {
     methodology.innerHTML = `
       <span class="kicker">METHOD</span>
@@ -72,10 +80,10 @@ if (dataset === 'jpl') {
   }
   const observer = new MutationObserver(normalizeJplLabels);
   observer.observe(document.querySelector('#app'), { subtree: true, childList: true, characterData: true });
-  await import('./app-v3.js?v=jpl-dataset-3');
+  await import('./app-v3.js?v=jpl-dataset-4');
   normalizeJplLabels();
 } else {
   if (firstTheoryTab) firstTheoryTab.textContent = 'USNO W2J00実観測';
-  await import('./app-v5.js?v=w2j00-dataset-3');
-  await import('./observation-frames.js?v=w2j00-dataset-3');
+  await import('./app-v5.js?v=w2j00-dataset-4');
+  await import('./observation-frames.js?v=w2j00-dataset-4');
 }
