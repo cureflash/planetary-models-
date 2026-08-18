@@ -2,117 +2,79 @@ from __future__ import annotations
 
 import csv
 import math
-import urllib.parse
 import urllib.request
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-OUT = ROOT / "data" / "mars_observations_carlsberg_1984_1998.csv"
-MARS_CMC_CODE = "99040"
+OUT = ROOT / "data" / "mars_observations_carlsberg_cmc4_1984_1988.csv"
+MARS_CMC_CODE = 99040
 
-# VizieR catalogue I/256, table planet:
-# Carlsberg Meridian Catalogues 1-11, observations from La Palma, 1984-1998.
-# In the historical CMC planet tables, Mars is identified by code 99040.
-ENDPOINTS = [
-    "https://vizier.cds.unistra.fr/viz-bin/asu-tsv",
-    "https://vizier.cfa.harvard.edu/viz-bin/asu-tsv",
-    "https://vizier.idia.ac.za/viz-bin/asu-tsv",
+# CMC4 supersedes CMC1-3 and contains observations made May 1984-Feb 1988.
+# CDS ReadMe I/147 identifies table2.dat as the raw planet-observation table;
+# code 99040 is Mars. Positions are apparent geocentric RA/Dec, equinox of date.
+URLS = [
+    "https://cdsarc.cds.unistra.fr/ftp/cats/I/147/table2.dat",
+    "https://cdsarc.u-strasbg.fr/ftp/cats/I/147/table2.dat",
+    "https://cdsarc.cds.unistra.fr/ftp/I/147/table2.dat",
 ]
 
-PARAMS = {
-    "-source": "I/256/planet",
-    "-out.all": "",
-    "-out.max": "unlimited",
-}
 
-
-def fetch_table() -> str:
-    query = urllib.parse.urlencode(PARAMS)
+def download_table() -> str:
     last_error: Exception | None = None
-    for endpoint in ENDPOINTS:
-        url = f"{endpoint}?{query}"
-        request = urllib.request.Request(
-            url,
-            headers={
-                "User-Agent": "planetary-models-educational-site/1.0 (GitHub Actions; VizieR I/256)"
-            },
-        )
+    for url in URLS:
         try:
+            request = urllib.request.Request(
+                url,
+                headers={"User-Agent": "planetary-models-educational-site/1.0"},
+            )
             with urllib.request.urlopen(request, timeout=60) as response:
-                text = response.read().decode("utf-8", errors="replace")
-            if "I/256/planet" not in text and "Name" not in text:
-                raise RuntimeError("VizieR response does not look like the requested table")
-            print(f"downloaded I/256/planet from {endpoint}")
+                text = response.read().decode("ascii", errors="replace")
+            if len(text.splitlines()) < 1000:
+                raise RuntimeError("downloaded file is unexpectedly short")
+            print(f"downloaded CMC4 table2.dat from {url}")
             return text
         except Exception as exc:
+            print(f"failed {url}: {exc}")
             last_error = exc
-            print(f"failed {endpoint}: {exc}")
-    raise RuntimeError(f"all VizieR mirrors failed: {last_error}")
+    raise RuntimeError(f"all CMC4 download URLs failed: {last_error}")
 
 
-def parse_asu_tsv(text: str) -> list[dict[str, str]]:
-    lines = text.splitlines()
-    header_index: int | None = None
-    header: list[str] | None = None
-
-    for i, line in enumerate(lines):
-        if not line or line.startswith("#"):
-            continue
-        cells = [c.strip() for c in line.split("\t")]
-        if {"TT", "RA", "DE"}.issubset(set(cells)) and ("MP" in cells or "Planet" in cells):
-            header_index = i
-            header = cells
-            print("VizieR columns:", header)
-            break
-
-    if header_index is None or header is None:
-        print("First non-comment VizieR lines:")
-        shown = 0
-        for line in lines:
-            if not line.startswith("#"):
-                print(repr(line))
-                shown += 1
-                if shown >= 20:
-                    break
-        raise RuntimeError("could not locate VizieR TSV header")
-
-    rows: list[dict[str, str]] = []
-    for line in lines[header_index + 1 :]:
-        if not line or line.startswith("#"):
-            continue
-        cells = [c.strip() for c in line.split("\t")]
-        if len(cells) != len(header):
-            continue
-        if all(c.startswith("-") or not c for c in cells):
-            continue
-        row = dict(zip(header, cells))
-        try:
-            float(row["TT"])
-        except (ValueError, TypeError):
-            continue
-        rows.append(row)
-    return rows
+def parse_int(field: str) -> int:
+    return int(field.strip())
 
 
-def parse_hms(value: str) -> float:
-    parts = value.replace(":", " ").split()
-    if len(parts) >= 3:
-        h, m, s = map(float, parts[:3])
-        return (h + m / 60.0 + s / 3600.0) * 15.0
-    x = float(value)
-    return x * 15.0 if abs(x) <= 24.0 else x
+def parse_float(field: str) -> float:
+    return float(field.strip())
 
 
-def parse_dms(value: str) -> float:
-    parts = value.replace(":", " ").split()
-    if len(parts) >= 3:
-        sign = -1.0 if parts[0].startswith("-") else 1.0
-        d = abs(float(parts[0]))
-        m = float(parts[1])
-        s = float(parts[2])
-        return sign * (d + m / 60.0 + s / 3600.0)
-    return float(value)
+def parse_cmc4_line(line: str) -> dict[str, float | int | str] | None:
+    # Fixed-width layout from CDS ReadMe I/147 table2.dat.
+    if len(line) < 52:
+        return None
+    try:
+        planet = parse_int(line[0:6])
+        jd = 2440000.0 + parse_float(line[6:21])
+        flag = line[21:22].strip()
+        rah = parse_int(line[25:27])
+        ram = parse_int(line[28:30])
+        ras = parse_float(line[31:37])
+        de_sign = -1.0 if line[40:41] == "-" else 1.0
+        ded = parse_int(line[41:43])
+        dem = parse_int(line[44:46])
+        des = parse_float(line[47:52])
+    except ValueError:
+        return None
+
+    ra_deg = 15.0 * (rah + ram / 60.0 + ras / 3600.0)
+    dec_deg = de_sign * (ded + dem / 60.0 + des / 3600.0)
+    return {
+        "planet": planet,
+        "jd": jd,
+        "flag": flag,
+        "ra_deg": ra_deg,
+        "dec_deg": dec_deg,
+    }
 
 
 def mean_obliquity_deg(jd: float) -> float:
@@ -122,74 +84,64 @@ def mean_obliquity_deg(jd: float) -> float:
 
 
 def equatorial_to_ecliptic_lon_deg(ra_deg: float, dec_deg: float, jd: float) -> float:
+    # Coordinate conversion only; no heliocentric orbit model is used.
     ra = math.radians(ra_deg)
     dec = math.radians(dec_deg)
     eps = math.radians(mean_obliquity_deg(jd))
     x = math.cos(dec) * math.cos(ra)
     y_eq = math.cos(dec) * math.sin(ra)
     z_eq = math.sin(dec)
-    y = y_eq * math.cos(eps) + z_eq * math.sin(eps)
-    return math.degrees(math.atan2(y, x)) % 360.0
+    y_ecl = y_eq * math.cos(eps) + z_eq * math.sin(eps)
+    return math.degrees(math.atan2(y_ecl, x)) % 360.0
 
 
 def jd_to_iso(jd: float) -> tuple[str, str]:
+    # CMC gives TDT. Keeping the TDT timestamp is sufficient for this comparison.
     dt = datetime(1970, 1, 1, tzinfo=timezone.utc) + timedelta(
         seconds=(jd - 2440587.5) * 86400.0
     )
     return dt.strftime("%Y-%m-%d"), dt.strftime("%Y-%m-%dT%H:%M:%S")
 
 
-def object_code(row: dict[str, str]) -> str:
-    return (row.get("MP") or row.get("Planet") or "").strip()
-
-
-def is_mars(row: dict[str, str]) -> bool:
-    code = object_code(row)
-    name = " ".join(row.get("Name", "").strip().lower().split())
-    return code == MARS_CMC_CODE or name == "mars" or name.startswith("mars ")
-
-
 def main() -> None:
-    raw = fetch_table()
-    rows = parse_asu_tsv(raw)
-    mars_rows = [r for r in rows if is_mars(r)]
-    if not mars_rows:
-        codes = sorted({object_code(r) for r in rows if object_code(r)})
-        raise RuntimeError(f"no Mars rows found; sample object codes={codes[-30:]}")
+    raw = download_table()
+    parsed = [p for line in raw.splitlines() if (p := parse_cmc4_line(line)) is not None]
+    mars = [p for p in parsed if p["planet"] == MARS_CMC_CODE]
+    if not mars:
+        codes = sorted({int(p["planet"]) for p in parsed})
+        raise RuntimeError(f"no Mars rows found; available codes include {codes[-20:]}")
 
-    print("Mars identifiers:", sorted({(object_code(r), r.get("Name", "").strip()) for r in mars_rows}))
-
-    output: list[dict[str, str | float]] = []
-    for row in mars_rows:
-        tt = float(row["TT"])
-        ra_deg = parse_hms(row["RA"])
-        dec_deg = parse_dms(row["DE"])
-        lon_deg = equatorial_to_ecliptic_lon_deg(ra_deg, dec_deg, tt)
-        date, timestamp = jd_to_iso(tt)
+    output: list[dict[str, str]] = []
+    for row in mars:
+        jd = float(row["jd"])
+        ra_deg = float(row["ra_deg"])
+        dec_deg = float(row["dec_deg"])
+        lon_deg = equatorial_to_ecliptic_lon_deg(ra_deg, dec_deg, jd)
+        date, timestamp = jd_to_iso(jd)
         output.append(
             {
                 "date": date,
-                "timestamp_tt": timestamp,
-                "tt_jd": f"{tt:.8f}",
+                "timestamp_tdt": timestamp,
+                "tdt_jd": f"{jd:.6f}",
                 "ra_deg": f"{ra_deg:.10f}",
                 "dec_deg": f"{dec_deg:.10f}",
                 "ecliptic_lon_deg": f"{lon_deg:.10f}",
-                "quality_flag": row.get("flag", "").strip(),
-                "cmc_object_code": object_code(row),
-                "source_catalog": "VizieR I/256/planet (CMC1-11)",
+                "quality_flag": str(row["flag"]),
+                "cmc_object_code": str(MARS_CMC_CODE),
+                "source_catalog": "Carlsberg Meridian Catalog Vol.4 (CDS I/147 table2.dat)",
             }
         )
 
-    output.sort(key=lambda r: float(r["tt_jd"]))
+    output.sort(key=lambda r: float(r["tdt_jd"]))
     OUT.parent.mkdir(parents=True, exist_ok=True)
     with OUT.open("w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=list(output[0].keys()))
         writer.writeheader()
         writer.writerows(output)
 
-    good = sum(1 for r in output if not r["quality_flag"])
-    print(f"wrote {len(output)} Mars observations ({good} unflagged) to {OUT}")
-    print(f"range: {output[0]['timestamp_tt']} .. {output[-1]['timestamp_tt']}")
+    good = sum(1 for r in output if r["quality_flag"] != "*")
+    print(f"wrote {len(output)} CMC4 Mars observations ({good} unflagged) to {OUT}")
+    print(f"range: {output[0]['timestamp_tdt']} .. {output[-1]['timestamp_tdt']}")
 
 
 if __name__ == "__main__":
