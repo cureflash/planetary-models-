@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import re
 import urllib.request
 
 BASES = [
@@ -23,45 +22,25 @@ def get(path: str) -> bytes:
     raise RuntimeError("; ".join(errors))
 
 
+def excerpt(text: str, needle: str, before: int = 200, after: int = 5000) -> None:
+    idx = text.casefold().find(needle.casefold())
+    print(f"\n### {needle} index={idx}")
+    if idx >= 0:
+        print(text[max(0, idx-before):idx+after])
+
+
 def main():
     readme = get("ReadMe").decode("ascii", errors="replace")
-    print("README length", len(readme))
-    for pattern in ("File Summary", "planet", "W2J00"):
-        print("\n### excerpts for", pattern)
-        low = readme.casefold()
-        start = 0
-        count = 0
-        while True:
-            idx = low.find(pattern.casefold(), start)
-            if idx < 0 or count >= 8:
-                break
-            print(readme[max(0, idx - 500):idx + 2500])
-            start = idx + len(pattern)
-            count += 1
+    excerpt(readme, "Byte-by-byte Description of file: w2j00sol.dat", 100, 7000)
+    excerpt(readme, "Byte-by-byte Description of file: w1j00sol.dat", 100, 5000)
 
-    # Extract probable data filenames from ReadMe file summary.
-    names = []
-    for line in readme.splitlines():
-        m = re.match(r"^\s*([A-Za-z0-9_.-]+)\s+\d+\s+\d+\s+", line)
-        if m:
-            names.append(m.group(1))
-    print("\nFILENAMES", names)
-
-    for name in names:
-        lname = name.casefold()
-        if any(tok in lname for tok in ("plan", "w2", "solar", "ssobj")):
-            try:
-                payload = get(name)
-                text = payload.decode("ascii", errors="replace")
-                print(f"\n=== {name}: {len(text.splitlines())} lines ===")
-                hits = [line for line in text.splitlines() if "mars" in line.casefold()]
-                print("MARS text hits", len(hits))
-                for line in hits[:10]:
-                    print(repr(line))
-                for line in text.splitlines()[:5]:
-                    print("SAMPLE", repr(line))
-            except Exception as exc:
-                print("failed", name, exc)
+    text = get("w2j00sol.dat").decode("ascii", errors="replace")
+    mars = [line for line in text.splitlines() if line.startswith("Mars")]
+    print(f"\nW2J00 total={len(text.splitlines())}, Mars={len(mars)}")
+    lengths = sorted(set(map(len, mars)))
+    print("Mars record lengths", lengths)
+    for line in mars[:20]:
+        print(repr(line))
 
 
 if __name__ == "__main__":
