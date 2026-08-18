@@ -7,6 +7,13 @@ on:
       - "tools/fetch_carlsberg_mars.py"
       - "tools/fit_ptolemy_models.py"
       - ".github/workflows/generate-reference.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "tools/fetch_carlsberg_mars.py"
+      - "tools/fit_ptolemy_models.py"
+      - ".github/workflows/generate-reference.yml"
+      - "tools/carlsberg-pipeline-trigger.txt"
   workflow_dispatch:
 
 permissions:
@@ -31,7 +38,17 @@ jobs:
       - name: Fit Ptolemy stages to the observations
         run: python tools/fit_ptolemy_models.py
 
+      - name: Upload generated data for validation
+        uses: actions/upload-artifact@v4
+        with:
+          name: carlsberg-mars-generated
+          path: |
+            data/mars_observations_carlsberg_1984_1998.csv
+            data/ptolemy_mars_fitted_parameters.json
+            models/ptolemy/fitted-parameters.js
+
       - name: Commit generated observation data and fits
+        if: github.event_name == 'push'
         run: |
           FILES="data/mars_observations_carlsberg_1984_1998.csv data/ptolemy_mars_fitted_parameters.json models/ptolemy/fitted-parameters.js"
           if [ -z "$(git status --porcelain -- $FILES)" ]; then
