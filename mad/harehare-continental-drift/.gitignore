@@ -1,0 +1,17 @@
+# Local audio / video sources
+assets/audio/*
+!assets/audio/README.md
+
+# Rendered video
+renders/
+*.mp4
+*.mkv
+*.avi
+*.mov
+
+# Temporary / cache files
+*.tmp
+*.bak
+*.autosave
+Thumbs.db
+.DS_Store

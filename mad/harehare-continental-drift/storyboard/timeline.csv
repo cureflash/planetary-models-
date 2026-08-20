@@ -1,0 +1,12 @@
+scene_id,section,start,end,primary_asset,visual,edit_style,status
+S01,intro,,,world_map,"地球儀・世界地図→ウェゲナー","fade;zoom",todo
+S02,a1,,,south_america+africa,"大陸接合→化石・地層・氷河跡","hard-cut;shake;flash",todo
+S03,a2,,,pangaea,"全大陸を集めてパンゲア完成","slide;zoom",todo
+S04,b1,,,wegener_portrait,"批判文でウェゲナーを囲む","text-pop;scale-down",todo
+S05,chorus1,,,continental_drift,"パンゲアから現在まで高速移動","rapid-cut;move;rotate",todo
+S06,a3,,,pangaea,"駆動機構の未解決問題","hold;text",todo
+S07,b2,,,mid_ocean_ridge,"海嶺→海洋底拡大→古地磁気","rapid-cut;big-text",todo
+S08,chorus2,,,subduction+plate_map,"沈み込み→プレートテクトニクス","flash;zoom;shake",todo
+S09,bridge,,,plate_vectors,"現代のプレート運動・過剰演出","loop;duplicate",todo
+S10,last_chorus,,,all,"前半からの証拠を高速回収","montage",todo
+S11,outro,,,world_map,"大陸は、本当に動いていた。","black-bg;text;fade",todo
